@@ -125,21 +125,21 @@ GỢI Ý:
 • Mẫu CT01 ở đâu?
 • Không có chỗ ở?
 
----
+HOẶC
 
-## 9. Context Awareness
-VERY IMPORTANT: Always check the conversation history to understand what service the user is currently discussing.
-If the user asks general questions like "Quên mật khẩu?", "Lỗi đăng nhập?", or "Không truy cập được", you MUST:
-1. Look at the previous messages to determine which service they're using
-2. If they were just discussing VNeID, assume they mean VNeID
-3. If they were discussing ETAX, assume they mean ETAX
-4. Only ask for clarification if the context is unclear
+SUGGESTIONS:
+- How to...
+- Can I...
+- How to use...
 
-Example:
-User: "Hướng dẫn tôi đăng ký VNeID mức độ 2"
-Assistant: [Hướng dẫn VNeID]
-User: "Quên mật khẩu?"
-Assistant: "Bạn quên mật khẩu VNeID à? Để tôi hướng dẫn bạn cách khôi phục..." (Không hỏi lại)
+HOẶC
+
+VÍ DỤ:
+• Tích hợp thẻ BHYT nhưng không thành công?
+• Tích hợp bằng lái xe nhưng bị lỗi?
+• Tích hợp thông tin cá nhân nhưng không hiển thị?
+
+Lưu ý: Nếu không có tiêu đề rõ ràng (GỢI Ý:, SUGGESTIONS:, VÍ DỤ:), vui lòng không tạo quick replies.
 `;
 
 // Access your API key as an environment variable
@@ -171,7 +171,9 @@ function extractSuggestions(text) {
         /Gợi ý:(.*)/s,
         /Suggestions:(.*)/s,
         /GỢI Ý CÂU HỎI TIẾP THEO:(.*)/s,
-        /Câu hỏi tiếp theo:(.*)/s
+        /Câu hỏi tiếp theo:(.*)/s,
+        /VÍ DỤ:(.*)/s,
+        /Ví dụ:(.*)/s
     ];
     
     for (const pattern of patterns) {
@@ -406,11 +408,11 @@ async function callSendAPIWithRating(sender_psid, response, quickReplies = null)
     
     let request_body;
     
-    // Tạo quick replies nếu có - ĐÃ FIX
+    // Tạo quick replies nếu có - ĐÃ CẢI TIẾN
     let quickRepliesArray = [];
     if (quickReplies && quickReplies.length > 0) {
-        quickRepliesArray = quickReplies.map(text => {
-            // Rút gọn thông minh
+        quickRepliesArray = quickReplies.map((text, index) => {
+            // Rút gọn tiêu đề để hiển thị
             let displayText = text;
             if (displayText.length > 20) {
                 // Tìm vị trí khoảng trắng gần vị trí 17
@@ -422,10 +424,11 @@ async function callSendAPIWithRating(sender_psid, response, quickReplies = null)
                 }
             }
             
+            // Payload chứa nguyên văn nội dung
             return {
                 "content_type": "text",
                 "title": displayText,
-                "payload": `SUGGESTION_${text.substring(0, 20)}`
+                "payload": `SUGGESTION_${index}_${encodeURIComponent(text)}`
             };
         });
     }
@@ -517,7 +520,7 @@ app.post('/webhook', async (req, res) => {
                         const messageText = webhook_event.message.text.trim();
                         if (messageText.startsWith('👍') || messageText.startsWith('👎') || 
                             messageText.includes('Hữu ích') || messageText.includes('Cần cải thiện') ||
-                            messageText.includes('SUGGESTION_') || messageText.includes('RATING_')) {
+                            messageText.startsWith('SUGGESTION_') || messageText.startsWith('RATING_')) {
                             await handleRating(sender_psid, messageText);
                             continue;
                         }
@@ -547,9 +550,28 @@ app.post('/webhook', async (req, res) => {
     console.log('🏁 Webhook processing completed\n');
 });
 
-// Xử lý đánh giá từ người dùng
+// Xử lý đánh giá từ người dùng - ĐÃ CẢI TIẾN
 async function handleRating(sender_psid, ratingText) {
     try {
+        // Kiểm tra nếu là suggestion
+        if (ratingText.startsWith('SUGGESTION_')) {
+            // Trích xuất nội dung nguyên văn
+            const parts = ratingText.split('_');
+            if (parts.length >= 3) {
+                const encodedText = parts.slice(2).join('_');
+                const originalText = decodeURIComponent(encodedText);
+                
+                console.log(`🎯 User selected suggestion: "${originalText}"`);
+                
+                // Gửi nội dung nguyên văn như một tin nhắn mới
+                const response = { "text": originalText };
+                await callSendAPI(sender_psid, response);
+                
+                return;
+            }
+        }
+        
+        // Xử lý rating thông thường
         let rating = 'unknown';
         if (ratingText.includes('👍') || ratingText.includes('Hữu ích')) {
             rating = 'helpful';
@@ -696,15 +718,6 @@ async function processImageAttachment(sender_psid, attachment) {
         // Gửi trực tiếp ảnh tới Gemini bằng inlineData
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
         
-        const result = await model.generateContent([
-            {
-                    inlineData: {
-                        data: imageBuffer.toString('base64'),
-                        mimeType: attachment.payload.mime_type || 'image/jpeg'
-                    }
-            },
-            "Hãy phân tích hình ảnh này. Nếu đây là ảnh chụp màn hình lỗi phần mềm, hãy hướng dẫn người dùng cách khắc phục. Nếu là tài liệu, hãy giải thích nội dung bằng tiếng Việt."
-        ]);
         
         const text = result.response.text();
         console.log(`🖼️ Image processed, response length: ${text.length}`);
@@ -755,7 +768,7 @@ async function processAudioAttachment(sender_psid, attachment) {
                     mimeType: attachment.payload.mime_type || 'audio/mp4'
                 }
             },
-            "Hãy chuyển đổi đoạn âm thanh sau thành văn bản tiếng Việt. Chỉ trả về nội dung văn bản, không thêm bất kỳ định dạng nào khác."
+            "Hãy chuyển đổi đoạn âm thanh sau thành văn bản. Chỉ trả về nội dung văn bản, không thêm bất kỳ định dạng nào khác."
         ]);
         
         const transcript = transcriptionResult.response.text().trim();
@@ -797,7 +810,7 @@ async function processAudioAttachment(sender_psid, attachment) {
 
             // Gửi transcript như một câu hỏi bình thường
             const result = await Promise.race([
-                chat.sendMessage(transcript),
+                chat.sendMessage(userMessage),
                 new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Gemini API timeout')), 30000)
                 )

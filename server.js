@@ -192,14 +192,14 @@ async function processMessage(sender_psid, received_message, requestKey) {
             
             // Tách phần gợi ý (nếu có)
             let quickReplies = [];
-            const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
+            const suggestionMatch = text.match(/(GỢI Ý|SUGGESTIONS):(.*)/s);
             if (suggestionMatch) {
-                const suggestions = suggestionMatch[1].split('\n')
+                const suggestions = suggestionMatch[2].split('\n')
                     .filter(line => line.trim())
                     .map(line => line.replace(/^[•\-]\s*/, '').trim())
                     .slice(0, 3); // Giới hạn 3 gợi ý
                 quickReplies = suggestions;
-                text = text.replace(/GỢI Ý:(.*)/s, '').trim();
+                text = text.replace(/(GỢI Ý|SUGGESTIONS):(.*)/s, '').trim();
             }
 
             // Gửi phản hồi với quick replies và nút đánh giá

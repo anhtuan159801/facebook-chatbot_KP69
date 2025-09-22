@@ -124,6 +124,22 @@ GỢI Ý:
 • Scan giấy tờ?
 • Mẫu CT01 ở đâu?
 • Không có chỗ ở?
+
+---
+
+## 9. Context Awareness
+VERY IMPORTANT: Always check the conversation history to understand what service the user is currently discussing.
+If the user asks general questions like "Quên mật khẩu?", "Lỗi đăng nhập?", or "Không truy cập được", you MUST:
+1. Look at the previous messages to determine which service they're using
+2. If they were just discussing VNeID, assume they mean VNeID
+3. If they were discussing ETAX, assume they mean ETAX
+4. Only ask for clarification if the context is unclear
+
+Example:
+User: "Hướng dẫn tôi đăng ký VNeID mức độ 2"
+Assistant: [Hướng dẫn VNeID]
+User: "Quên mật khẩu?"
+Assistant: "Bạn quên mật khẩu VNeID à? Để tôi hướng dẫn bạn cách khôi phục..." (Không hỏi lại)
 `;
 
 // Access your API key as an environment variable
@@ -153,8 +169,6 @@ async function processMessage(sender_psid, received_message, requestKey) {
     console.log('Sender PSID:', sender_psid);
     console.log('Message text:', received_message.text);
     
-    let response;
-
     try {
         if (received_message.text && received_message.text.trim()) {
             const userMessage = received_message.text.trim();
@@ -163,7 +177,6 @@ async function processMessage(sender_psid, received_message, requestKey) {
             // Get conversation history
             const history = await getConversationHistory(sender_psid);
             
-            // Ensure history starts with 'user' if not empty
             if (history.length > 0 && history[0].role === 'model') {
                 history.shift();
             }
@@ -172,13 +185,36 @@ async function processMessage(sender_psid, received_message, requestKey) {
 
             const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
             
+            // Tạo system instruction với ngữ cảnh
+            let enhancedSystemPrompt = SYSTEM_PROMPT;
+            
+            // Nếu là câu hỏi chung, thêm ngữ cảnh
+            if (userMessage.toLowerCase().includes('quên mật khẩu') || 
+                userMessage.toLowerCase().includes('lỗi đăng nhập') ||
+                userMessage.toLowerCase().includes('không truy cập') ||
+                userMessage.toLowerCase().includes('bị khóa') ||
+                userMessage.toLowerCase().includes('không nhớ')) {
+                
+                // Tìm service gần đây nhất trong lịch sử
+                const recentMessages = history.slice(-5).map(msg => msg.parts[0].text).join(' ');
+                if (recentMessages.includes('VNeID')) {
+                    enhancedSystemPrompt += "\n\nCURRENT CONTEXT: User is currently working with VNeID service.";
+                } else if (recentMessages.includes('ETAX') || recentMessages.includes('thuế')) {
+                    enhancedSystemPrompt += "\n\nCURRENT CONTEXT: User is currently working with ETAX service.";
+                } else if (recentMessages.includes('VssID') || recentMessages.includes('bảo hiểm')) {
+                    enhancedSystemPrompt += "\n\nCURRENT CONTEXT: User is currently working with VssID service.";
+                } else if (recentMessages.includes('Cổng Dịch vụ') || recentMessages.includes('dịch vụ công')) {
+                    enhancedSystemPrompt += "\n\nCURRENT CONTEXT: User is currently working with National Public Service Portal.";
+                }
+            }
+            
             const chat = model.startChat({
                 history: history,
                 generationConfig: {
                     maxOutputTokens: 5000,
                     temperature: 0.7,
                 },
-                systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                systemInstruction: { parts: [{ text: enhancedSystemPrompt }] },
             });
 
             // Send message to Gemini
@@ -191,14 +227,14 @@ async function processMessage(sender_psid, received_message, requestKey) {
             
             let text = result.response.text();
             
-            // Tách phần gợi ý (nếu có) - SỬA LỖI REGEX
+            // Tách phần gợi ý (nếu có)
             let quickReplies = [];
             const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
             if (suggestionMatch) {
                 const suggestions = suggestionMatch[1].split('\n')
                     .filter(line => line.trim())
                     .map(line => line.replace(/^[•\-]\s*/, '').trim())
-                    .slice(0, 3); // Giới hạn 3 gợi ý
+                    .slice(0, 3);
                 quickReplies = suggestions;
                 text = text.replace(/GỢI Ý:(.*)/s, '').trim();
             }
@@ -208,7 +244,7 @@ async function processMessage(sender_psid, received_message, requestKey) {
                 const chunks = splitMessage(text, 2000);
                 for (let i = 0; i < chunks.length; i++) {
                     const isLastChunk = (i === chunks.length - 1);
-                    response = { "text": chunks[i] };
+                    const response = { "text": chunks[i] };
                     if (isLastChunk) {
                         await callSendAPIWithRating(sender_psid, response, quickReplies);
                     } else {
@@ -219,7 +255,7 @@ async function processMessage(sender_psid, received_message, requestKey) {
                     }
                 }
             } else {
-                response = { "text": text };
+                const response = { "text": text };
                 await callSendAPIWithRating(sender_psid, response, quickReplies);
             }
 
@@ -229,7 +265,7 @@ async function processMessage(sender_psid, received_message, requestKey) {
 
         } else {
             console.log('❌ Invalid message - no text content');
-            response = {
+            const response = {
                 "text": "Xin lỗi, tôi chỉ có thể xử lý tin nhắn văn bản. Bạn có thể gửi câu hỏi bằng chữ để tôi hỗ trợ bạn nhé! 😊"
             };
             await callSendAPI(sender_psid, response);
@@ -336,14 +372,28 @@ async function callSendAPIWithRating(sender_psid, response, quickReplies = null)
     
     let request_body;
     
-    // Tạo quick replies nếu có
+    // Tạo quick replies nếu có - ĐÃ FIX
     let quickRepliesArray = [];
     if (quickReplies && quickReplies.length > 0) {
-        quickRepliesArray = quickReplies.map(text => ({
-            "content_type": "text",
-            "title": text,
-            "payload": `QUICK_REPLY_${text.substring(0, 20)}`
-        }));
+        quickRepliesArray = quickReplies.map(text => {
+            // Rút gọn thông minh
+            let displayText = text;
+            if (displayText.length > 20) {
+                // Tìm vị trí khoảng trắng gần vị trí 17
+                const cutPos = displayText.lastIndexOf(' ', 17);
+                if (cutPos > 0) {
+                    displayText = displayText.substring(0, cutPos) + '...';
+                } else {
+                    displayText = displayText.substring(0, 17) + '...';
+                }
+            }
+            
+            return {
+                "content_type": "text",
+                "title": displayText,
+                "payload": `SUGGESTION_${text.substring(0, 20)}`
+            };
+        });
     }
     
     // Thêm nút đánh giá
@@ -355,7 +405,7 @@ async function callSendAPIWithRating(sender_psid, response, quickReplies = null)
         },
         {
             "content_type": "text",
-            "title": "👎 Cần cải thiện",
+            "title": "👎 Cải thiện",
             "payload": `RATING_NOT_HELPFUL_${Date.now()}`
         }
     ];
@@ -432,7 +482,8 @@ app.post('/webhook', async (req, res) => {
                     if (webhook_event.message && webhook_event.message.text) {
                         const messageText = webhook_event.message.text.trim();
                         if (messageText.startsWith('👍') || messageText.startsWith('👎') || 
-                            messageText.includes('Hữu ích') || messageText.includes('Cần cải thiện')) {
+                            messageText.includes('Hữu ích') || messageText.includes('Cần cải thiện') ||
+                            messageText.includes('SUGGESTION_') || messageText.includes('RATING_')) {
                             await handleRating(sender_psid, messageText);
                             continue;
                         }
@@ -494,7 +545,7 @@ async function handleRating(sender_psid, ratingText) {
     }
 }
 
-// Fetches the last 10 messages for a user
+// Fetches the last 20 messages for a user (tăng để có ngữ cảnh tốt hơn)
 async function getConversationHistory(userId) {
     const query = {
         text: `
@@ -504,7 +555,7 @@ async function getConversationHistory(userId) {
                 SELECT bot_response as message, 'model' as role, created_at FROM conversations WHERE user_id = $1 AND bot_response IS NOT NULL
             ) as history
             ORDER BY created_at DESC
-            LIMIT 10
+            LIMIT 20
         `,
         values: [userId],
     };
@@ -614,7 +665,7 @@ async function processImageAttachment(sender_psid, attachment) {
         const result = await model.generateContent([
             {
                 inlineData: {
-                    data: imageBuffer.toString('base64'),
+                     imageBuffer.toString('base64'),
                     mimeType: attachment.payload.mime_type || 'image/jpeg'
                 }
             },
@@ -661,7 +712,7 @@ async function processAudioAttachment(sender_psid, attachment) {
         const transcriptionResult = await model.generateContent([
             {
                 inlineData: {
-                    data: audioBuffer.toString('base64'),
+                     audioBuffer.toString('base64'),
                     mimeType: attachment.payload.mime_type || 'audio/mp4'
                 }
             },
@@ -682,15 +733,27 @@ async function processAudioAttachment(sender_psid, attachment) {
 
             console.log('🤖 Sending transcribed message to Gemini for processing...');
 
-            const chatModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
             
-            const chat = chatModel.startChat({
+            // Tạo system instruction với ngữ cảnh cho voice message
+            let enhancedSystemPrompt = SYSTEM_PROMPT;
+            
+            const recentMessages = history.slice(-3).map(msg => msg.parts[0].text).join(' ');
+            if (recentMessages.includes('VNeID')) {
+                enhancedSystemPrompt += "\n\nCURRENT CONTEXT: User is currently working with VNeID service.";
+            } else if (recentMessages.includes('ETAX') || recentMessages.includes('thuế')) {
+                enhancedSystemPrompt += "\n\nCURRENT CONTEXT: User is currently working with ETAX service.";
+            } else if (recentMessages.includes('VssID') || recentMessages.includes('bảo hiểm')) {
+                enhancedSystemPrompt += "\n\nCURRENT CONTEXT: User is currently working with VssID service.";
+            }
+            
+            const chat = model.startChat({
                 history: history,
                 generationConfig: {
                     maxOutputTokens: 5000,
                     temperature: 0.7,
                 },
-                systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                systemInstruction: { parts: [{ text: enhancedSystemPrompt }] },
             });
 
             // Gửi transcript như một câu hỏi bình thường
@@ -703,14 +766,14 @@ async function processAudioAttachment(sender_psid, attachment) {
             
             let text = result.response.text();
             
-            // Tách phần gợi ý (nếu có) - SỬA LỖI REGEX
+            // Tách phần gợi ý (nếu có)
             let quickReplies = [];
             const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
             if (suggestionMatch) {
                 const suggestions = suggestionMatch[1].split('\n')
                     .filter(line => line.trim())
                     .map(line => line.replace(/^[•\-]\s*/, '').trim())
-                    .slice(0, 3); // Giới hạn 3 gợi ý
+                    .slice(0, 3);
                 quickReplies = suggestions;
                 text = text.replace(/GỢI Ý:(.*)/s, '').trim();
             }

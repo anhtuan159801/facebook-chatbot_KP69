@@ -74,7 +74,7 @@ When provided with relevant context from documentation:
 2. If the context contains specific steps or procedures, follow them exactly.
 3. If the context does not fully answer the question, supplement it with your general knowledge.
 4. Always maintain a friendly, emoji-rich communication style even when using context information.
-5. Adapt the context information to the user’s specific question.
+5. Adapt the context information to the user's specific question.
 6. Always use the language the user used to ask the question. (For example: if the user asks in Vietnamese, respond in Vietnamese; if they ask in English, respond in English.)
 
 ---
@@ -113,6 +113,16 @@ Hello 👋, to integrate your Driver's License (GPLX) into VNeID, just follow th
 - Ensure you correctly understand the error from the image before advising.
 - Provide specific guidance based on the actual interface shown in the image.
 - The response content should be around 250-300 words when an image is involved.
+
+---
+
+## 8. Suggested Follow-up Questions
+After finishing the answer, if possible, provide 2–3 related questions that the user might want to ask next.
+Format as follows:
+SUGGESTIONS:
+• How to…
+• Can I…
+• How to use…
 `;
 
 // Access your API key as an environment variable
@@ -178,22 +188,38 @@ async function processMessage(sender_psid, received_message, requestKey) {
                 )
             ]);
             
-            const text = result.response.text();
-            console.log(`✅ Received response from Gemini, length: ${text.length}`);
+            let text = result.response.text();
+            
+            // Tách phần gợi ý (nếu có)
+            let quickReplies = [];
+            const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
+            if (suggestionMatch) {
+                const suggestions = suggestionMatch[1].split('\n')
+                    .filter(line => line.trim())
+                    .map(line => line.replace(/^[•\-]\s*/, '').trim())
+                    .slice(0, 3); // Giới hạn 3 gợi ý
+                quickReplies = suggestions;
+                text = text.replace(/GỢI Ý:(.*)/s, '').trim();
+            }
 
-            // Send response (with chunking if needed)
+            // Gửi phản hồi với quick replies và nút đánh giá
             if (text.length > 2000) {
                 const chunks = splitMessage(text, 2000);
                 for (let i = 0; i < chunks.length; i++) {
+                    const isLastChunk = (i === chunks.length - 1);
                     response = { "text": chunks[i] };
-                    await callSendAPI(sender_psid, response);
+                    if (isLastChunk) {
+                        await callSendAPIWithRating(sender_psid, response, quickReplies);
+                    } else {
+                        await callSendAPI(sender_psid, response);
+                    }
                     if (i < chunks.length - 1) {
                         await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 }
             } else {
                 response = { "text": text };
-                await callSendAPI(sender_psid, response);
+                await callSendAPIWithRating(sender_psid, response, quickReplies);
             }
 
             // Save conversation
@@ -303,6 +329,74 @@ async function callSendAPI(sender_psid, response, maxRetries = 3) {
     return false;
 }
 
+// Gửi tin nhắn với nút đánh giá và quick replies
+async function callSendAPIWithRating(sender_psid, response, quickReplies = null) {
+    const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+    
+    let request_body;
+    
+    // Tạo quick replies nếu có
+    let quickRepliesArray = [];
+    if (quickReplies && quickReplies.length > 0) {
+        quickRepliesArray = quickReplies.map(text => ({
+            "content_type": "text",
+            "title": text,
+            "payload": `QUICK_REPLY_${text.substring(0, 20)}`
+        }));
+    }
+    
+    // Thêm nút đánh giá
+    const ratingButtons = [
+        {
+            "content_type": "text",
+            "title": "👍 Hữu ích",
+            "payload": `RATING_HELPFUL_${Date.now()}`
+        },
+        {
+            "content_type": "text",
+            "title": "👎 Cần cải thiện",
+            "payload": `RATING_NOT_HELPFUL_${Date.now()}`
+        }
+    ];
+    
+    // Kết hợp quick replies và nút đánh giá
+    const allQuickReplies = [...quickRepliesArray, ...ratingButtons];
+    
+    request_body = {
+        "recipient": { "id": sender_psid },
+        "message": {
+            "text": response.text,
+            "quick_replies": allQuickReplies.slice(0, 11) // Facebook giới hạn 11 quick replies
+        }
+    };
+
+    console.log('📤 Sending message with rating to Facebook API...');
+    
+    try {
+        const fetch = await import('node-fetch');
+        const apiResponse = await fetch.default(
+            `https://graph.facebook.com/v2.6/me/messages?access_token=${PAGE_ACCESS_TOKEN}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request_body)
+            }
+        );
+
+        const responseData = await apiResponse.json();
+        if (apiResponse.ok) {
+            console.log(`✅ Message with rating sent successfully to ${sender_psid}!`);
+            return true;
+        } else {
+            console.error(`❌ Facebook API error:`, responseData);
+            return false;
+        }
+    } catch (error) {
+        console.error(`❌ Error sending message with rating:`, error);
+        return false;
+    }
+}
+
 // Handle incoming messages
 app.post('/webhook', async (req, res) => {
     let body = req.body;
@@ -333,17 +427,28 @@ app.post('/webhook', async (req, res) => {
 
                     const requestKey = `${sender_psid}_${Date.now()}`;
                     
+                    // Xử lý tin nhắn đánh giá
                     if (webhook_event.message && webhook_event.message.text) {
-                        console.log('📤 Valid text message found, processing...');
+                        const messageText = webhook_event.message.text.trim();
+                        if (messageText.startsWith('👍') || messageText.startsWith('👎') || 
+                            messageText.includes('Hữu ích') || messageText.includes('Cần cải thiện')) {
+                            await handleRating(sender_psid, messageText);
+                            continue;
+                        }
+                    }
+                    
+                    // Xử lý các loại tin nhắn khác
+                    if (webhook_event.message) {
+                        console.log('📤 Valid message found, processing...');
                         
                         try {
-                            await handleMessage(sender_psid, webhook_event.message, requestKey);
+                            await handleMessage(sender_psid, webhook_event, requestKey);
                             console.log('✅ Message processed successfully');
                         } catch (error) {
                             console.error('❌ Error processing message:', error);
                         }
                     } else {
-                        console.log('⚠️ Skipping - no text message found');
+                        console.log('⚠️ Skipping - no valid message found');
                     }
                 }
             }
@@ -355,6 +460,38 @@ app.post('/webhook', async (req, res) => {
     
     console.log('🏁 Webhook processing completed\n');
 });
+
+// Xử lý đánh giá từ người dùng
+async function handleRating(sender_psid, ratingText) {
+    try {
+        let rating = 'unknown';
+        if (ratingText.includes('👍') || ratingText.includes('Hữu ích')) {
+            rating = 'helpful';
+        } else if (ratingText.includes('👎') || ratingText.includes('Cần cải thiện')) {
+            rating = 'not_helpful';
+        }
+        
+        // Lưu đánh giá vào database
+        const query = {
+            text: 'INSERT INTO feedback (user_id, rating, created_at) VALUES ($1, $2, NOW())',
+            values: [sender_psid, rating],
+        };
+        
+        await pool.query(query);
+        console.log(`✅ Rating saved for user ${sender_psid}: ${rating}`);
+        
+        // Gửi phản hồi cảm ơn
+        const response = {
+            "text": rating === 'helpful' 
+                ? "Cảm ơn bạn! Rất vui khi có thể giúp đỡ bạn 😊" 
+                : "Cảm ơn phản hồi của bạn! Chúng tôi sẽ cố gắng cải thiện hơn nữa 🙏"
+        };
+        await callSendAPI(sender_psid, response);
+        
+    } catch (error) {
+        console.error(`❌ Error handling rating for ${sender_psid}:`, error);
+    }
+}
 
 // Fetches the last 10 messages for a user
 async function getConversationHistory(userId) {
@@ -397,19 +534,203 @@ async function saveConversation(userId, userMessage, botResponse) {
 }
 
 // Handles messages events với improved error handling và concurrency control
-async function handleMessage(sender_psid, received_message, requestKey) {
+async function handleMessage(sender_psid, webhook_event, requestKey) {
     if (processingRequests.has(sender_psid)) {
         console.log(`User ${sender_psid} is already being processed, queuing request...`);
         await processingRequests.get(sender_psid);
     }
 
-    const processingPromise = processMessage(sender_psid, received_message, requestKey);
+    let processingPromise;
+    
+    if (webhook_event.message && webhook_event.message.text) {
+        // Tin nhắn văn bản
+        processingPromise = processMessage(sender_psid, webhook_event.message, requestKey);
+    } else if (webhook_event.message && webhook_event.message.attachments) {
+        // Tin nhắn có tệp đính kèm
+        processingPromise = processAttachment(sender_psid, webhook_event.message, requestKey);
+    } else {
+        // Tin nhắn không hợp lệ
+        const response = {
+            "text": "Xin lỗi, tôi chỉ có thể xử lý tin nhắn văn bản, hình ảnh hoặc âm thanh. Bạn có thể gửi lại nhé! 😊"
+        };
+        await callSendAPI(sender_psid, response);
+        return;
+    }
+
     processingRequests.set(sender_psid, processingPromise);
 
     try {
         await processingPromise;
     } finally {
         processingRequests.delete(sender_psid);
+    }
+}
+
+// Xử lý tệp đính kèm (hình ảnh/âm thanh)
+async function processAttachment(sender_psid, message, requestKey) {
+    console.log('=== PROCESS ATTACHMENT START ===');
+    
+    try {
+        const attachment = message.attachments[0]; // Lấy file đầu tiên
+        
+        if (attachment.type === 'image') {
+            await processImageAttachment(sender_psid, attachment);
+        } else if (attachment.type === 'audio') {
+            await processAudioAttachment(sender_psid, attachment);
+        } else {
+            const response = {
+                "text": "Hiện tại tôi chỉ hỗ trợ xử lý hình ảnh và âm thanh. Bạn có thể gửi ảnh chụp màn hình lỗi hoặc file âm thanh nhé! 📷🎵"
+            };
+            await callSendAPI(sender_psid, response);
+        }
+    } catch (error) {
+        console.error(`❌ ERROR in processAttachment for ${sender_psid}:`, error);
+        const errorResponse = {
+            "text": "Xin lỗi, hiện tại tôi đang gặp sự cố khi xử lý tệp đính kèm. Bạn vui lòng thử lại sau ít phút nhé! 🙏"
+        };
+        await callSendAPI(sender_psid, errorResponse);
+    }
+    
+    console.log('=== PROCESS ATTACHMENT END ===\n');
+}
+
+// Xử lý hình ảnh - HOÀN TOÀN MỚI VÀ ĐÃ TEST
+async function processImageAttachment(sender_psid, attachment) {
+    try {
+        const imageUrl = attachment.payload.url.trim();
+        console.log(`📥 Downloading image from: ${imageUrl}`);
+        
+        // Tải ảnh về buffer
+        const fetch = await import('node-fetch');
+        const imageResponse = await fetch.default(imageUrl);
+        const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+        
+        console.log(`🖼️ Image downloaded, size: ${imageBuffer.length} bytes`);
+        
+        // Gửi trực tiếp ảnh tới Gemini bằng inlineData
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        
+        const result = await model.generateContent([
+            {
+                inlineData: {
+                    data: imageBuffer.toString('base64'),
+                    mimeType: attachment.payload.mime_type || 'image/jpeg'
+                }
+            },
+            "Hãy phân tích hình ảnh này. Nếu đây là ảnh chụp màn hình lỗi phần mềm, hãy hướng dẫn người dùng cách khắc phục. Nếu là tài liệu, hãy giải thích nội dung bằng tiếng Việt."
+        ]);
+        
+        const text = result.response.text();
+        console.log(`🖼️ Image processed, response length: ${text.length}`);
+        
+        // Gửi kết quả
+        const response = { "text": text };
+        await callSendAPI(sender_psid, response);
+        
+        // Lưu vào lịch sử
+        await saveConversation(sender_psid, "[Ảnh đính kèm]", text);
+        console.log(`✅ Processed image for ${sender_psid}`);
+        
+    } catch (error) {
+        console.error(`❌ Error processing image for ${sender_psid}:`, error);
+        const response = {
+            "text": "Xin lỗi, tôi không thể xử lý hình ảnh này. Bạn có thể mô tả lỗi bằng văn bản để tôi hỗ trợ nhé! 📝"
+        };
+        await callSendAPI(sender_psid, response);
+    }
+}
+
+// Xử lý âm thanh - TRẢ LỜI TRỰC TIẾP CÂU HỎI TRONG VOICE
+async function processAudioAttachment(sender_psid, attachment) {
+    try {
+        const audioUrl = attachment.payload.url.trim();
+        console.log(`📥 Downloading audio from: ${audioUrl}`);
+        
+        // Tải audio về buffer
+        const fetch = await import('node-fetch');
+        const audioResponse = await fetch.default(audioUrl);
+        const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+        
+        console.log(`🎵 Audio downloaded, size: ${audioBuffer.length} bytes`);
+        
+        // Gửi trực tiếp audio tới Gemini để nhận transcript
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        
+        // Bước 1: Chuyển speech thành text
+        const transcriptionResult = await model.generateContent([
+            {
+                inlineData: {
+                    data: audioBuffer.toString('base64'),
+                    mimeType: attachment.payload.mime_type || 'audio/mp4'
+                }
+            },
+            "Hãy chuyển đổi đoạn âm thanh sau thành văn bản tiếng Việt. Chỉ trả về nội dung văn bản, không thêm bất kỳ định dạng nào khác."
+        ]);
+        
+        const transcript = transcriptionResult.response.text().trim();
+        console.log(`🎤 Transcribed text: "${transcript}"`);
+        
+        // Bước 2: Dùng transcript như một câu hỏi thông thường để xử lý
+        if (transcript) {
+            // Get conversation history
+            const history = await getConversationHistory(sender_psid);
+            
+            if (history.length > 0 && history[0].role === 'model') {
+                history.shift();
+            }
+
+            console.log('🤖 Sending transcribed message to Gemini for processing...');
+
+            const chatModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+            
+            const chat = chatModel.startChat({
+                history: history,
+                generationConfig: {
+                    maxOutputTokens: 5000,
+                    temperature: 0.7,
+                },
+                systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            });
+
+            // Gửi transcript như một câu hỏi bình thường
+            const result = await Promise.race([
+                chat.sendMessage(transcript),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Gemini API timeout')), 30000)
+                )
+            ]);
+            
+            let text = result.response.text();
+            
+            // Tách phần gợi ý (nếu có)
+            let quickReplies = [];
+            const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
+            if (suggestionMatch) {
+                const suggestions = suggestionMatch[1].split('\n')
+                    .filter(line => line.trim())
+                    .map(line => line.replace(/^[•\-]\s*/, '').trim())
+                    .slice(0, 3); // Giới hạn 3 gợi ý
+                quickReplies = suggestions;
+                text = text.replace(/GỢI Ý:(.*)/s, '').trim();
+            }
+
+            // Gửi phản hồi với quick replies và nút đánh giá
+            const response = { "text": text };
+            await callSendAPIWithRating(sender_psid, response, quickReplies);
+
+            // Lưu vào lịch sử (lưu cả transcript và response)
+            await saveConversation(sender_psid, transcript, text);
+            console.log(`✅ Processed audio question for ${sender_psid}: "${transcript}"`);
+        } else {
+            throw new Error('Không thể chuyển đổi âm thanh thành văn bản');
+        }
+        
+    } catch (error) {
+        console.error(`❌ Error processing audio for ${sender_psid}:`, error);
+        const response = {
+            "text": "Xin lỗi, tôi không thể hiểu được nội dung voice message của bạn. Bạn có thể thử lại hoặc gửi câu hỏi bằng văn bản nhé! 🎵"
+        };
+        await callSendAPI(sender_psid, response);
     }
 }
 
@@ -502,7 +823,7 @@ app.post('/test-message', async (req, res) => {
     
     try {
         const fakeMessage = { text: message };
-        await handleMessage(psid, fakeMessage, `test_${Date.now()}`);
+        await handleMessage(psid, { message: fakeMessage }, `test_${Date.now()}`);
         res.json({ 
             success: true, 
             message: 'Test message processed', 

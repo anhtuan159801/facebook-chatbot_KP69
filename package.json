@@ -19,8 +19,8 @@
   "author": "Anh Tuan",
   "license": "MIT",
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "dotenv": "^16.4.5",
+    "@google/generative-ai": "^0.12.0",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "node-fetch": "^3.3.2",
     "pg": "^8.12.0"

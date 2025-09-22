@@ -6,7 +6,7 @@ Chatbot Messenger được xây dựng với Node.js, tích hợp trực tiếp 
 
 ### ✨ Tính Năng Chính
 
-- 🧠 **Tích hợp Google Gemini**: Sử dụng mô hình `gemini-2.0-flash-exp` để xử lý và trả lời tin nhắn.
+- 🧠 **Tích hợp Google Gemini**: Sử dụng mô hình `gemini-1.5-flash-latest` để xử lý và trả lời tin nhắn.
 - 💬 **Tích hợp Facebook Messenger**: Hoạt động hoàn toàn trên nền tảng Facebook Messenger.
 - 🗃️ **Lưu trữ Lịch sử Hội thoại**: Sử dụng PostgreSQL để lưu lại các cuộc trò chuyện, giúp AI có ngữ cảnh tốt hơn.
 - 🚀 **API Endpoints**: Cung cấp các endpoint để kiểm tra trạng thái và gỡ lỗi.
@@ -34,7 +34,7 @@ npm install
 
 ### 3. Cấu Hình Environment
 
-Tạo một file tên là `.env` ở thư mục gốc và điền các thông tin sau:
+Tạo một file tên là `.env` ở thư mục gốc và điền các thông tin sau. Đảm bảo bạn đã cài đặt gói `dotenv` (`npm install dotenv`) và gọi `require('dotenv').config();` ở đầu file server của bạn để tải các biến môi trường này.
 
 ```env
 # Facebook Messenger Configuration
@@ -111,6 +111,7 @@ npm start
     *   **Webhook URL**: `https://your-domain.com/webhook` (thay `your-domain.com` bằng URL server của bạn).
     *   **Verify Token**: Điền giá trị bạn đã đặt trong file `.env`.
     *   **Subscribe to events**: Chọn `messages` và `messaging_postbacks`.
+    **Lưu ý cho Development**: Khi phát triển cục bộ, bạn có thể cần sử dụng một công cụ như `ngrok` để tạo một URL công khai tạm thời trỏ đến server local của bạn, cho phép Facebook gửi webhook request đến máy tính của bạn.
 
 ### 2. Test Gửi Tin Nhắn
 

@@ -665,7 +665,7 @@ async function processImageAttachment(sender_psid, attachment) {
         const result = await model.generateContent([
             {
                 inlineData: {
-                     imageBuffer.toString('base64'),
+                    data: imageBuffer.toString('base64'),
                     mimeType: attachment.payload.mime_type || 'image/jpeg'
                 }
             },
@@ -712,7 +712,7 @@ async function processAudioAttachment(sender_psid, attachment) {
         const transcriptionResult = await model.generateContent([
             {
                 inlineData: {
-                     audioBuffer.toString('base64'),
+                    data: audioBuffer.toString('base64'),
                     mimeType: attachment.payload.mime_type || 'audio/mp4'
                 }
             },

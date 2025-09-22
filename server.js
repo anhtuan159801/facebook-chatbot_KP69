@@ -162,6 +162,47 @@ app.use(express.json());
 // Map để theo dõi các request đang xử lý
 const processingRequests = new Map();
 
+// ==== HELPER FUNCTION: Trích xuất suggestions linh hoạt ====
+function extractSuggestions(text) {
+    // Các pattern có thể xuất hiện
+    const patterns = [
+        /GỢI Ý:(.*)/s,
+        /SUGGESTIONS:(.*)/s, 
+        /Gợi ý:(.*)/s,
+        /Suggestions:(.*)/s,
+        /GỢI Ý CÂU HỎI TIẾP THEO:(.*)/s,
+        /Câu hỏi tiếp theo:(.*)/s
+    ];
+    
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+            console.log(`🎯 Matched suggestion pattern: ${pattern}`);
+            const suggestionsText = match[1];
+            const suggestions = suggestionsText.split('\n')
+                .filter(line => line.trim())
+                .map(line => {
+                    // Loại bỏ bullet points và khoảng trắng
+                    return line.replace(/^[•\-]\s*/, '').trim();
+                })
+                .filter(line => line.length > 0) // Loại bỏ dòng trống
+                .slice(0, 3); // Giới hạn 3 suggestions
+            
+            // Xóa phần suggestions khỏi text gốc
+            const cleanedText = text.replace(pattern, '').trim();
+            return {
+                suggestions: suggestions,
+                cleanedText: cleanedText
+            };
+        }
+    }
+    
+    return {
+        suggestions: [],
+        cleanedText: text
+    };
+}
+
 // ==== MESSAGE PROCESSING ====
 
 async function processMessage(sender_psid, received_message, requestKey) {
@@ -227,17 +268,10 @@ async function processMessage(sender_psid, received_message, requestKey) {
             
             let text = result.response.text();
             
-            // Tách phần gợi ý (nếu có)
-            let quickReplies = [];
-            const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
-            if (suggestionMatch) {
-                const suggestions = suggestionMatch[1].split('\n')
-                    .filter(line => line.trim())
-                    .map(line => line.replace(/^[•\-]\s*/, '').trim())
-                    .slice(0, 3);
-                quickReplies = suggestions;
-                text = text.replace(/GỢI Ý:(.*)/s, '').trim();
-            }
+            // Tách phần gợi ý (nếu có) - CẢI TIẾN LINH HOẠT
+            const extractionResult = extractSuggestions(text);
+            const quickReplies = extractionResult.suggestions;
+            text = extractionResult.cleanedText;
 
             // Gửi phản hồi với quick replies và nút đánh giá
             if (text.length > 2000) {
@@ -664,10 +698,10 @@ async function processImageAttachment(sender_psid, attachment) {
         
         const result = await model.generateContent([
             {
-                inlineData: {
-                    data: imageBuffer.toString('base64'),
-                    mimeType: attachment.payload.mime_type || 'image/jpeg'
-                }
+                    inlineData: {
+                        data: imageBuffer.toString('base64'),
+                        mimeType: attachment.payload.mime_type || 'image/jpeg'
+                    }
             },
             "Hãy phân tích hình ảnh này. Nếu đây là ảnh chụp màn hình lỗi phần mềm, hãy hướng dẫn người dùng cách khắc phục. Nếu là tài liệu, hãy giải thích nội dung bằng tiếng Việt."
         ]);
@@ -675,12 +709,17 @@ async function processImageAttachment(sender_psid, attachment) {
         const text = result.response.text();
         console.log(`🖼️ Image processed, response length: ${text.length}`);
         
+        // Tách phần gợi ý (nếu có) - CẢI TIẾN LINH HOẠT
+        const extractionResult = extractSuggestions(text);
+        const quickReplies = extractionResult.suggestions;
+        const cleanedText = extractionResult.cleanedText;
+        
         // Gửi kết quả
-        const response = { "text": text };
-        await callSendAPI(sender_psid, response);
+        const response = { "text": cleanedText };
+        await callSendAPIWithRating(sender_psid, response, quickReplies);
         
         // Lưu vào lịch sử
-        await saveConversation(sender_psid, "[Ảnh đính kèm]", text);
+        await saveConversation(sender_psid, "[Ảnh đính kèm]", cleanedText);
         console.log(`✅ Processed image for ${sender_psid}`);
         
     } catch (error) {
@@ -766,17 +805,10 @@ async function processAudioAttachment(sender_psid, attachment) {
             
             let text = result.response.text();
             
-            // Tách phần gợi ý (nếu có)
-            let quickReplies = [];
-            const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
-            if (suggestionMatch) {
-                const suggestions = suggestionMatch[1].split('\n')
-                    .filter(line => line.trim())
-                    .map(line => line.replace(/^[•\-]\s*/, '').trim())
-                    .slice(0, 3);
-                quickReplies = suggestions;
-                text = text.replace(/GỢI Ý:(.*)/s, '').trim();
-            }
+            // Tách phần gợi ý (nếu có) - CẢI TIẾN LINH HOẠT
+            const extractionResult = extractSuggestions(text);
+            const quickReplies = extractionResult.suggestions;
+            text = extractionResult.cleanedText;
 
             // Gửi phản hồi với quick replies và nút đánh giá
             const response = { "text": text };

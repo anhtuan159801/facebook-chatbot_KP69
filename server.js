@@ -118,11 +118,12 @@ Hello 👋, to integrate your Driver's License (GPLX) into VNeID, just follow th
 
 ## 8. GỢI Ý CÂU HỎI TIẾP THEO
 Sau khi trả lời xong, nếu có thể, hãy đưa ra 2–3 câu hỏi liên quan mà người dùng có thể muốn hỏi tiếp theo.
+QUAN TRỌNG: Mỗi câu hỏi gợi ý PHẢI DƯỚI 20 KÝ TỰ để hiển thị trên Facebook Messenger.
 Định dạng như sau:
 GỢI Ý:
-• Làm sao để…
-• Tôi có thể…
-• Cách sử dụng…
+• Scan giấy tờ?
+• Mẫu CT01 ở đâu?
+• Không có chỗ ở?
 `;
 
 // Access your API key as an environment variable

@@ -116,13 +116,13 @@ Hello 👋, to integrate your Driver's License (GPLX) into VNeID, just follow th
 
 ---
 
-## 8. Suggested Follow-up Questions
-After finishing the answer, if possible, provide 2–3 related questions that the user might want to ask next.
-Format as follows:
-SUGGESTIONS:
-• How to…
-• Can I…
-• How to use…
+## 8. GỢI Ý CÂU HỎI TIẾP THEO
+Sau khi trả lời xong, nếu có thể, hãy đưa ra 2–3 câu hỏi liên quan mà người dùng có thể muốn hỏi tiếp theo.
+Định dạng như sau:
+GỢI Ý:
+• Làm sao để…
+• Tôi có thể…
+• Cách sử dụng…
 `;
 
 // Access your API key as an environment variable
@@ -190,16 +190,16 @@ async function processMessage(sender_psid, received_message, requestKey) {
             
             let text = result.response.text();
             
-            // Tách phần gợi ý (nếu có)
+            // Tách phần gợi ý (nếu có) - SỬA LỖI REGEX
             let quickReplies = [];
-            const suggestionMatch = text.match(/(GỢI Ý|SUGGESTIONS):(.*)/s);
+            const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
             if (suggestionMatch) {
-                const suggestions = suggestionMatch[2].split('\n')
+                const suggestions = suggestionMatch[1].split('\n')
                     .filter(line => line.trim())
                     .map(line => line.replace(/^[•\-]\s*/, '').trim())
                     .slice(0, 3); // Giới hạn 3 gợi ý
                 quickReplies = suggestions;
-                text = text.replace(/(GỢI Ý|SUGGESTIONS):(.*)/s, '').trim();
+                text = text.replace(/GỢI Ý:(.*)/s, '').trim();
             }
 
             // Gửi phản hồi với quick replies và nút đánh giá
@@ -640,7 +640,7 @@ async function processImageAttachment(sender_psid, attachment) {
     }
 }
 
-// Xử lý âm thanh - TRẢ LỜI TRỰC TIẾP CÂU HỎI TRONG VOICE
+// Xử lý âm thanh - TRẢ LỜI TRỰC TIẾP CÂU HỎI TRONG VOICE + HỖ TRỢ QUICK REPLIES
 async function processAudioAttachment(sender_psid, attachment) {
     try {
         const audioUrl = attachment.payload.url.trim();
@@ -702,16 +702,16 @@ async function processAudioAttachment(sender_psid, attachment) {
             
             let text = result.response.text();
             
-            // Tách phần gợi ý (nếu có)
+            // Tách phần gợi ý (nếu có) - SỬA LỖI REGEX
             let quickReplies = [];
-            const suggestionMatch = text.match(/(GỢI Ý|SUGGESTIONS):(.*)/s);
+            const suggestionMatch = text.match(/GỢI Ý:(.*)/s);
             if (suggestionMatch) {
                 const suggestions = suggestionMatch[1].split('\n')
                     .filter(line => line.trim())
                     .map(line => line.replace(/^[•\-]\s*/, '').trim())
                     .slice(0, 3); // Giới hạn 3 gợi ý
                 quickReplies = suggestions;
-                text = text.replace(/(GỢI Ý|SUGGESTIONS):(.*)/s, '').trim();
+                text = text.replace(/GỢI Ý:(.*)/s, '').trim();
             }
 
             // Gửi phản hồi với quick replies và nút đánh giá

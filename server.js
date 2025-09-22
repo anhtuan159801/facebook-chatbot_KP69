@@ -125,12 +125,6 @@ GỢI Ý:
 • Mẫu CT01 ở đâu?
 • Không có chỗ ở?
 
-HOẶC
-
-SUGGESTIONS:
-- How to...
-- Can I...
-- How to use...
 
 HOẶC
 

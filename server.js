@@ -60,7 +60,7 @@ When provided with relevant context from documentation:
 3. If the context does not fully answer the question, supplement it with your general knowledge.
 4. Always maintain a friendly, emoji-rich communication style even when using context information.
 5. Adapt the context information to the user's specific question.
-6. Always use the language the user used to ask the question. (For example: if the user asks in Vietnamese, respond in Vietnamese; if they ask in English, respond in English.)
+6. BẮT BUỘC TUYỆT ĐỐI: Bạn PHẢI TRẢ LỜI bằng NGÔN NGỮ mà người dùng dùng để hỏi. Nếu người dùng hỏi bằng tiếng Việt, bạn phải trả lời bằng tiếng Việt. Nếu người dùng hỏi bằng tiếng Anh, bạn phải trả lời bằng tiếng Anh. Nếu người dùng hỏi bằng ngôn ngữ khác (Trung, Hàn, Nhật, Pháp, v.v.), bạn PHẢI trả lời bằng chính ngôn ngữ đó. KHÔNG ĐƯỢC tự ý đổi ngôn ngữ. NGÔN NGỮ TRẢ LỜI PHẢI GIỐNG NGÔN NGỮ NGƯỜI DÙNG DÙNG.
 ---
 ## 6. Sample Example (For Text-Based Questions)
 User's Question: "How do I integrate my driver's license into VNeID?"
@@ -278,10 +278,6 @@ async function processNormalMessage(sender_psid, userMessage) {
         text = "Xin lỗi, hiện mình chưa thể xử lý câu hỏi này. Bạn vui lòng thử lại sau nhé! 🙏";
     }
 
-    const extractionResult = extractSuggestions(text);
-    const quickReplies = extractionResult.suggestions;
-    text = extractionResult.cleanedText;
-
     // Phân tích xem tin nhắn có phải là hướng dẫn không
     if (text.includes('STEP')) {
         // Đây là hướng dẫn có các bước
@@ -308,6 +304,9 @@ async function processNormalMessage(sender_psid, userMessage) {
                 const isLastChunk = (i === chunks.length - 1);
                 const response = { "text": chunks[i] };
                 if (isLastChunk) {
+                    // Gửi chunk cuối cùng với quick replies
+                    const extractionResult = extractSuggestions(text); // Gửi toàn bộ text để trích xuất
+                    const quickReplies = extractionResult.suggestions;
                     await callSendAPIWithRating(sender_psid, response, quickReplies);
                 } else {
                     await callSendAPI(sender_psid, response);
@@ -317,7 +316,9 @@ async function processNormalMessage(sender_psid, userMessage) {
                 }
             }
         } else {
-            const response = { "text": text };
+            const extractionResult = extractSuggestions(text);
+            const quickReplies = extractionResult.suggestions;
+            const response = { "text": extractionResult.cleanedText };
             await callSendAPIWithRating(sender_psid, response, quickReplies);
         }
     }
@@ -426,29 +427,56 @@ async function callSendAPI(sender_psid, response, maxRetries = 3) {
     return false;
 }
 
-// Gửi tin nhắn với nút đánh giá và quick replies
+// Gửi tin nhắn với nút đánh giá và quick replies (đã cải tiến theo hành trình)
 async function callSendAPIWithRating(sender_psid, response, quickReplies = null) {
     const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
     let quickRepliesArray = [];
-    if (quickReplies && quickReplies.length > 0) {
-        quickRepliesArray = quickReplies.map((text, index) => {
-            let displayText = text;
-            if (displayText.length > 20) {
-                const cutPos = displayText.lastIndexOf(' ', 17);
-                if (cutPos > 0) {
-                    displayText = displayText.substring(0, cutPos) + '...';
-                } else {
-                    displayText = displayText.substring(0, 17) + '...';
-                }
-            }
-            return {
+
+    // Kiểm tra nếu người dùng đang trong hành trình
+    const userSession = userSessions.get(sender_psid);
+    if (userSession && userSession.currentJourney && userSession.journeyActive) {
+        // Nếu đang trong hành trình, tạo quick replies theo hành trình
+        const journeySteps = userSession.currentJourney.fullGuide.split('STEP ').filter(step => step.trim()).length;
+        quickRepliesArray = [
+            {
                 "content_type": "text",
-                "title": displayText,
-                "payload": `SUGGESTION_${index}_${encodeURIComponent(text)}`
-            };
-        });
+                "title": `Bước ${userSession.journeyStep}`,
+                "payload": `JOURNEY_STEP_${userSession.journeyStep}`
+            },
+            {
+                "content_type": "text",
+                "title": "Tôi bị lỗi ở bước này",
+                "payload": `JOURNEY_ERROR_${userSession.journeyStep}`
+            },
+            {
+                "content_type": "text",
+                "title": "Tôi cần quay lại",
+                "payload": "JOURNEY_BACK"
+            }
+        ];
+    } else {
+        // Nếu không trong hành trình, dùng gợi ý từ Gemini như cũ
+        if (quickReplies && quickReplies.length > 0) {
+            quickRepliesArray = quickReplies.map((text, index) => {
+                let displayText = text;
+                if (displayText.length > 20) {
+                    const cutPos = displayText.lastIndexOf(' ', 17);
+                    if (cutPos > 0) {
+                        displayText = displayText.substring(0, cutPos) + '...';
+                    } else {
+                        displayText = displayText.substring(0, 17) + '...';
+                    }
+                }
+                return {
+                    "content_type": "text",
+                    "title": displayText,
+                    "payload": `SUGGESTION_${index}_${encodeURIComponent(text)}`
+                };
+            });
+        }
     }
 
+    // Thêm nút đánh giá
     const ratingButtons = [
         {
             "content_type": "text",
@@ -516,7 +544,8 @@ app.post('/webhook', async (req, res) => {
                         const messageText = webhook_event.message.text.trim();
                         if (messageText.startsWith('👍') || messageText.startsWith('👎') || 
                             messageText.includes('Hữu ích') || messageText.includes('Cần cải thiện') ||
-                            messageText.startsWith('SUGGESTION_') || messageText.startsWith('RATING_')) {
+                            messageText.startsWith('SUGGESTION_') || messageText.startsWith('RATING_') ||
+                            messageText.startsWith('JOURNEY_')) { // Thêm hỗ trợ cho hành trình
                             await handleRating(sender_psid, messageText);
                             continue;
                         }
@@ -543,9 +572,10 @@ app.post('/webhook', async (req, res) => {
     console.log('🏁 Webhook processing completed\n');
 });
 
-// Xử lý đánh giá từ người dùng
+// Xử lý đánh giá từ người dùng (đã cập nhật hỗ trợ hành trình)
 async function handleRating(sender_psid, ratingText) {
     try {
+        // Kiểm tra nếu là suggestion
         if (ratingText.startsWith('SUGGESTION_')) {
             const parts = ratingText.split('_');
             if (parts.length >= 3) {
@@ -558,6 +588,33 @@ async function handleRating(sender_psid, ratingText) {
             }
         }
 
+        // Kiểm tra nếu là hành trình
+        if (ratingText.startsWith('JOURNEY_')) {
+            const userSession = userSessions.get(sender_psid);
+            if (!userSession || !userSession.currentJourney || !userSession.journeyActive) {
+                const response = { "text": "Bạn hiện không đang trong hành trình hướng dẫn nào." };
+                await callSendAPI(sender_psid, response);
+                return;
+            }
+
+            if (ratingText.includes('STEP_')) {
+                const step = ratingText.split('_')[1];
+                const response = { "text": `Bạn đang ở bước ${step} trong hành trình. Nếu cần hỗ trợ, cứ hỏi mình nhé!` };
+                await callSendAPI(sender_psid, response);
+            } else if (ratingText.includes('ERROR_')) {
+                const step = ratingText.split('_')[1];
+                const response = { "text": `Bạn gặp lỗi ở bước ${step}? Mình sẽ hỗ trợ bạn ngay. Vui lòng mô tả lỗi bạn gặp phải.` };
+                await callSendAPI(sender_psid, response);
+            } else if (ratingText.includes('BACK')) {
+                userSession.journeyStep = Math.max(0, userSession.journeyStep - 1);
+                const response = { "text": "Bạn đã quay lại bước trước. Mình sẽ tiếp tục hướng dẫn từ bước đó." };
+                await callSendAPI(sender_psid, response);
+                await sendNextStep(sender_psid);
+            }
+            return;
+        }
+
+        // Xử lý rating thông thường
         let rating = 'unknown';
         if (ratingText.includes('👍') || ratingText.includes('Hữu ích')) {
             rating = 'helpful';
@@ -748,6 +805,7 @@ async function processAudioAttachment(sender_psid, attachment) {
 
             const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
             let enhancedSystemPrompt = SYSTEM_PROMPT;
+
             const recentMessages = history.slice(-3).map(msg => msg.parts[0].text).join(' ');
             if (recentMessages.includes('VNeID')) {
                 enhancedSystemPrompt += "\nCURRENT CONTEXT: User is currently working with VNeID service.";
@@ -767,7 +825,7 @@ async function processAudioAttachment(sender_psid, attachment) {
             });
 
             const result = await Promise.race([
-                chat.sendMessage(transcript), // ✅ Đã sửa lỗi: dùng transcript thay vì userMessage
+                chat.sendMessage(transcript),
                 new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Gemini API timeout')), 30000)
                 )

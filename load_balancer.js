@@ -14,7 +14,7 @@ const LOAD_BALANCER_CONFIG = {
     PRIMARY_SYSTEM: 'gemini',      // Hệ thống chính
     BACKUP_SYSTEM: 'router_hug',   // Hệ thống backup
     RECOVERY_TIME: 12 * 60 * 60 * 1000, // 12 giờ = 43,200,000ms
-    HEALTH_CHECK_INTERVAL: 30 * 1000,   // 30 giây
+    HEALTH_CHECK_INTERVAL: 5 * 60 * 1000,   // 5 phút (chỉ khi cần)
     MAX_RETRY_ATTEMPTS: 3,              // Số lần thử lại tối đa
     RETRY_DELAY: 5000                   // 5 giây delay giữa các lần thử
 };
@@ -68,14 +68,15 @@ class HealthChecker {
         if (this.isRunning) return;
         
         this.isRunning = true;
-        console.log('🏥 Health Checker started');
+        console.log('🏥 Health Checker started (Lazy Mode - only when needed)');
         
-        // Chạy health check ngay lập tức
-        this.performHealthCheck();
-        
-        // Sau đó chạy định kỳ
+        // KHÔNG chạy health check ngay lập tức
+        // Chỉ chạy khi có request thực tế hoặc khi cần thiết
         this.intervalId = setInterval(() => {
-            this.performHealthCheck();
+            // Chỉ check nếu có request gần đây
+            if (systemStatus.totalRequests > 0) {
+                this.performHealthCheck();
+            }
         }, LOAD_BALANCER_CONFIG.HEALTH_CHECK_INTERVAL);
     }
 
@@ -208,6 +209,12 @@ const healthChecker = new HealthChecker();
 // ==== REQUEST ROUTING ====
 async function routeRequest(req, res) {
     systemStatus.totalRequests++;
+    
+    // Chỉ health check khi có request thực tế
+    if (systemStatus.totalRequests === 1) {
+        console.log('🎯 First request detected - performing initial health check');
+        await healthChecker.performHealthCheck();
+    }
     
     // Nếu đang trong chế độ bảo trì
     if (systemStatus.maintenanceMode) {

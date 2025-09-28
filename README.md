@@ -4,7 +4,7 @@
 
 Hệ thống Chatbot Messenger được xây dựng với Node.js, tích hợp **Load Balancer** thông minh để quản lý 2 hệ thống AI:
 - **Gemini Bot** (Hệ thống chính) - Sử dụng Google Gemini AI
-- **Router Hug Bot** (Hệ thống backup) - Sử dụng Grok API qua OpenRouter
+- **Router Hug Bot** (Hệ thống backup) - Sử dụng Grok API qua OpenRouter và Huggingface
 
 Hệ thống có khả năng **tự động failover** và **auto-recovery** để đảm bảo uptime 99.9%.
 

@@ -70,14 +70,9 @@ class HealthChecker {
         this.isRunning = true;
         console.log('🏥 Health Checker started (Lazy Mode - only when needed)');
         
-        // KHÔNG chạy health check ngay lập tức
-        // Chỉ chạy khi có request thực tế hoặc khi cần thiết
-        this.intervalId = setInterval(() => {
-            // Chỉ check nếu có request gần đây
-            if (systemStatus.totalRequests > 0) {
-                this.performHealthCheck();
-            }
-        }, LOAD_BALANCER_CONFIG.HEALTH_CHECK_INTERVAL);
+        // KHÔNG chạy health check định kỳ
+        // Chỉ check khi có request thực tế hoặc khi cần thiết
+        console.log('🏥 Health Checker in ON-DEMAND mode - no periodic checks');
     }
 
     stop() {
@@ -210,9 +205,9 @@ const healthChecker = new HealthChecker();
 async function routeRequest(req, res) {
     systemStatus.totalRequests++;
     
-    // Chỉ health check khi có request thực tế
-    if (systemStatus.totalRequests === 1) {
-        console.log('🎯 First request detected - performing initial health check');
+    // Chỉ health check khi có request thực tế và hệ thống chưa được check
+    if (systemStatus.totalRequests === 1 || systemStatus.gemini.status === 'unknown') {
+        console.log('🎯 Performing on-demand health check');
         await healthChecker.performHealthCheck();
     }
     

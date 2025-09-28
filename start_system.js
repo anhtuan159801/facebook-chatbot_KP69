@@ -212,18 +212,9 @@ async function main() {
             break;
             
         default:
-            console.log('🤖 Chatbot System Manager');
-            console.log('Usage: node start_system.js <command>');
-            console.log('');
-            console.log('Commands:');
-            console.log('  start    - Start all services');
-            console.log('  stop     - Stop all services');
-            console.log('  restart  - Restart all services');
-            console.log('  status   - Show system status');
-            console.log('');
-            console.log('Examples:');
-            console.log('  node start_system.js start');
-            console.log('  node start_system.js status');
+            // Nếu không có command, tự động start (cho Render deployment)
+            console.log('🤖 Chatbot System Manager - Auto Starting...');
+            await manager.startSystem();
             break;
     }
 }

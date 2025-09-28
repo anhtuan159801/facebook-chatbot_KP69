@@ -125,6 +125,132 @@ const processingRequests = new Map();
 // Map để theo dõi trạng thái người dùng (User Journey)
 const userSessions = new Map();
 
+// ==== QUEUE MANAGEMENT SYSTEM ====
+class QueueManager {
+    constructor(maxConcurrent = 5, waitTime = 60000) {
+        this.maxConcurrent = maxConcurrent;
+        this.waitTime = waitTime; // 1 phút = 60000ms
+        this.activeRequests = new Map();
+        this.waitingQueue = [];
+        this.requestCounter = 0;
+    }
+
+    async addRequest(requestId, requestHandler) {
+        this.requestCounter++;
+        const requestInfo = {
+            id: requestId,
+            handler: requestHandler,
+            startTime: Date.now(),
+            queueNumber: this.requestCounter
+        };
+
+        console.log(`📋 Queue Manager: Request ${requestId} (Queue #${this.requestCounter}) received`);
+
+        // Nếu chưa đạt giới hạn concurrent, xử lý ngay
+        if (this.activeRequests.size < this.maxConcurrent) {
+            return this.processRequest(requestInfo);
+        } else {
+            // Thêm vào hàng chờ
+            this.waitingQueue.push(requestInfo);
+            console.log(`⏳ Queue Manager: Request ${requestId} queued. Queue length: ${this.waitingQueue.length}`);
+            
+            // Gửi thông báo chờ cho user
+            const queuePosition = this.waitingQueue.length;
+            const estimatedWaitTime = Math.ceil(queuePosition * this.waitTime / 1000 / 60); // phút
+            
+            try {
+                const waitMessage = {
+                    "text": `⏳ Hiện tại hệ thống đang bận xử lý ${this.maxConcurrent} yêu cầu. Bạn đang ở vị trí ${queuePosition} trong hàng chờ. Thời gian chờ ước tính: ${estimatedWaitTime} phút. Vui lòng chờ trong giây lát... 🙏`
+                };
+                await callSendAPI(requestId, waitMessage);
+            } catch (error) {
+                console.error(`❌ Failed to send wait message to ${requestId}:`, error);
+            }
+
+            return new Promise((resolve, reject) => {
+                requestInfo.resolve = resolve;
+                requestInfo.reject = reject;
+            });
+        }
+    }
+
+    async processRequest(requestInfo) {
+        const { id, handler, startTime, queueNumber } = requestInfo;
+        
+        console.log(`🚀 Queue Manager: Processing request ${id} (Queue #${queueNumber})`);
+        this.activeRequests.set(id, requestInfo);
+
+        try {
+            const result = await handler();
+            const processingTime = Date.now() - startTime;
+            console.log(`✅ Queue Manager: Request ${id} completed in ${processingTime}ms`);
+            return result;
+        } catch (error) {
+            console.error(`❌ Queue Manager: Request ${id} failed:`, error);
+            throw error;
+        } finally {
+            this.activeRequests.delete(id);
+            console.log(`📊 Queue Manager: Active requests: ${this.activeRequests.size}/${this.maxConcurrent}`);
+            
+            // Xử lý request tiếp theo trong hàng chờ
+            this.processNextInQueue();
+        }
+    }
+
+    processNextInQueue() {
+        if (this.waitingQueue.length > 0) {
+            const nextRequest = this.waitingQueue.shift();
+            console.log(`⏭️ Queue Manager: Processing next queued request ${nextRequest.id}`);
+            
+            // Chờ 1 phút trước khi xử lý request tiếp theo
+            setTimeout(() => {
+                this.processRequest(nextRequest).then(nextRequest.resolve).catch(nextRequest.reject);
+            }, this.waitTime);
+        }
+    }
+
+    getQueueStatus() {
+        return {
+            activeRequests: this.activeRequests.size,
+            maxConcurrent: this.maxConcurrent,
+            waitingQueue: this.waitingQueue.length,
+            totalProcessed: this.requestCounter,
+            activeRequestIds: Array.from(this.activeRequests.keys()),
+            waitingRequestIds: this.waitingQueue.map(req => req.id)
+        };
+    }
+
+    // Thống kê thời gian chờ trung bình
+    getAverageWaitTime() {
+        if (this.waitingQueue.length === 0) return 0;
+        return this.waitingQueue.length * this.waitTime;
+    }
+}
+
+// Khởi tạo Queue Manager
+const queueManager = new QueueManager(5, 60000); // 5 concurrent, 1 phút chờ
+
+// Biến để theo dõi quota (sử dụng trong ngày)
+let dailyQuotaUsed = 0;
+const DAILY_QUOTA_LIMIT = 45; // Để lại 5 request dư cho an toàn
+let quotaResetTimeout = null;
+
+// Reset quota vào 00:00 UTC mỗi ngày
+function resetDailyQuota() {
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setUTCHours(24, 0, 0, 0); // 00:00 UTC
+    const timeUntilMidnight = nextMidnight - now;
+
+    quotaResetTimeout = setTimeout(() => {
+        dailyQuotaUsed = 0;
+        console.log("✅ Daily quota reset to 0.");
+        resetDailyQuota(); // Lặp lại vào ngày mai
+    }, timeUntilMidnight);
+}
+
+resetDailyQuota();
+
 // ==== HELPER FUNCTION: Trích xuất suggestions linh hoạt ====
 function extractSuggestions(text) {
     const patterns = [
@@ -237,7 +363,17 @@ async function processNormalMessage(sender_psid, userMessage) {
         history.shift();
     }
     console.log('🤖 Sending message to Gemini...');
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    
+    // Kiểm tra quota
+    if (dailyQuotaUsed >= DAILY_QUOTA_LIMIT) {
+        const response = {
+            "text": "Xin lỗi, hôm nay mình đã đạt giới hạn sử dụng API. Vui lòng quay lại vào ngày mai nhé! 🙏"
+        };
+        await callSendAPI(sender_psid, response);
+        return;
+    }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     
     let enhancedSystemPrompt = SYSTEM_PROMPT;
     const recentMessages = history.slice(-5).map(msg => msg.parts[0].text).join(' ');
@@ -324,7 +460,8 @@ async function processNormalMessage(sender_psid, userMessage) {
     }
 
     await saveConversation(sender_psid, userMessage, text);
-    console.log(`✅ Successfully processed message for ${sender_psid}`);
+    dailyQuotaUsed++;
+    console.log(`✅ Successfully processed message for ${sender_psid}. Daily quota used: ${dailyQuotaUsed}/${DAILY_QUOTA_LIMIT}`);
 }
 
 // Gửi bước tiếp theo trong hành trình
@@ -682,27 +819,44 @@ async function saveConversation(userId, userMessage, botResponse) {
 
 // Handles messages events với improved error handling và concurrency control
 async function handleMessage(sender_psid, webhook_event, requestKey) {
+    // Kiểm tra nếu user đang có request đang xử lý
     if (processingRequests.has(sender_psid)) {
         console.log(`User ${sender_psid} is already being processed, queuing request...`);
         await processingRequests.get(sender_psid);
     }
-    let processingPromise;
-    if (webhook_event.message && webhook_event.message.text) {
-        processingPromise = processMessage(sender_psid, webhook_event.message, requestKey);
-    } else if (webhook_event.message && webhook_event.message.attachments) {
-        processingPromise = processAttachment(sender_psid, webhook_event.message, requestKey);
-    } else {
-        const response = {
-            "text": "Xin lỗi, tôi chỉ có thể xử lý tin nhắn văn bản, hình ảnh hoặc âm thanh. Bạn có thể gửi lại nhé! 😊"
-        };
-        await callSendAPI(sender_psid, response);
-        return;
-    }
-    processingRequests.set(sender_psid, processingPromise);
+
+    // Tạo handler function cho queue manager
+    const messageHandler = async () => {
+        let processingPromise;
+        if (webhook_event.message && webhook_event.message.text) {
+            processingPromise = processMessage(sender_psid, webhook_event.message, requestKey);
+        } else if (webhook_event.message && webhook_event.message.attachments) {
+            processingPromise = processAttachment(sender_psid, webhook_event.message, requestKey);
+        } else {
+            const response = {
+                "text": "Xin lỗi, tôi chỉ có thể xử lý tin nhắn văn bản, hình ảnh hoặc âm thanh. Bạn có thể gửi lại nhé! 😊"
+            };
+            await callSendAPI(sender_psid, response);
+            return;
+        }
+        
+        processingRequests.set(sender_psid, processingPromise);
+        try {
+            await processingPromise;
+        } finally {
+            processingRequests.delete(sender_psid);
+        }
+    };
+
+    // Sử dụng Queue Manager để xử lý request
     try {
-        await processingPromise;
-    } finally {
-        processingRequests.delete(sender_psid);
+        await queueManager.addRequest(sender_psid, messageHandler);
+    } catch (error) {
+        console.error(`❌ Queue Manager error for ${sender_psid}:`, error);
+        const errorResponse = {
+            "text": "Xin lỗi, hiện tại hệ thống đang gặp sự cố. Vui lòng thử lại sau ít phút nhé! 🙏"
+        };
+        await callSendAPI(sender_psid, errorResponse);
     }
 }
 
@@ -734,6 +888,15 @@ async function processAttachment(sender_psid, message, requestKey) {
 // Xử lý hình ảnh
 async function processImageAttachment(sender_psid, attachment) {
     try {
+        // Kiểm tra quota
+        if (dailyQuotaUsed >= DAILY_QUOTA_LIMIT) {
+            const response = {
+                "text": "Xin lỗi, hôm nay mình đã đạt giới hạn sử dụng API. Vui lòng quay lại vào ngày mai nhé! 🙏"
+            };
+            await callSendAPI(sender_psid, response);
+            return;
+        }
+
         const imageUrl = attachment.payload.url.trim();
         console.log(`📥 Downloading image from: ${imageUrl}`);
         const fetch = await import('node-fetch');
@@ -741,7 +904,7 @@ async function processImageAttachment(sender_psid, attachment) {
         const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
         console.log(`🖼️ Image downloaded, size: ${imageBuffer.length} bytes`);
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
         const result = await model.generateContent([
             {
                 inlineData: {
@@ -764,7 +927,8 @@ async function processImageAttachment(sender_psid, attachment) {
         const response = { "text": cleanedText };
         await callSendAPIWithRating(sender_psid, response, quickReplies);
         await saveConversation(sender_psid, "[Ảnh đính kèm]", cleanedText);
-        console.log(`✅ Processed image for ${sender_psid}`);
+        dailyQuotaUsed++;
+        console.log(`✅ Processed image for ${sender_psid}. Daily quota used: ${dailyQuotaUsed}/${DAILY_QUOTA_LIMIT}`);
     } catch (error) {
         console.error(`❌ Error processing image for ${sender_psid}:`, error);
         const response = {
@@ -777,6 +941,15 @@ async function processImageAttachment(sender_psid, attachment) {
 // Xử lý âm thanh
 async function processAudioAttachment(sender_psid, attachment) {
     try {
+        // Kiểm tra quota
+        if (dailyQuotaUsed >= DAILY_QUOTA_LIMIT) {
+            const response = {
+                "text": "Xin lỗi, hôm nay mình đã đạt giới hạn sử dụng API. Vui lòng quay lại vào ngày mai nhé! 🙏"
+            };
+            await callSendAPI(sender_psid, response);
+            return;
+        }
+
         const audioUrl = attachment.payload.url.trim();
         console.log(`📥 Downloading audio from: ${audioUrl}`);
         const fetch = await import('node-fetch');
@@ -784,7 +957,7 @@ async function processAudioAttachment(sender_psid, attachment) {
         const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
         console.log(`🎵 Audio downloaded, size: ${audioBuffer.length} bytes`);
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
         const transcriptionResult = await model.generateContent([
             {
                 inlineData: {
@@ -803,7 +976,7 @@ async function processAudioAttachment(sender_psid, attachment) {
                 history.shift();
             }
 
-            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
             let enhancedSystemPrompt = SYSTEM_PROMPT;
 
             const recentMessages = history.slice(-3).map(msg => msg.parts[0].text).join(' ');
@@ -824,6 +997,7 @@ async function processAudioAttachment(sender_psid, attachment) {
                 systemInstruction: { parts: [{ text: enhancedSystemPrompt }] },
             });
 
+            // ✅ ĐÃ SỬA: Gửi `transcript` thay vì `userMessage`
             const result = await Promise.race([
                 chat.sendMessage(transcript),
                 new Promise((_, reject) => 
@@ -842,12 +1016,23 @@ async function processAudioAttachment(sender_psid, attachment) {
             const response = { "text": text };
             await callSendAPIWithRating(sender_psid, response, quickReplies);
             await saveConversation(sender_psid, transcript, text);
-            console.log(`✅ Processed audio question for ${sender_psid}: "${transcript}"`);
+            dailyQuotaUsed++;
+            console.log(`✅ Processed audio question for ${sender_psid}: "${transcript}". Daily quota used: ${dailyQuotaUsed}/${DAILY_QUOTA_LIMIT}`);
         } else {
             throw new Error('Không thể chuyển đổi âm thanh thành văn bản');
         }
     } catch (error) {
         console.error(`❌ Error processing audio for ${sender_psid}:`, error);
+
+        // Kiểm tra lỗi 429
+        if (error.status === 429) {
+            const response = {
+                "text": "Xin lỗi, hiện tại hệ thống đang được bảo trì. Vui lòng quay lại vào ngày mai nhé! 🙏"
+            };
+            await callSendAPI(sender_psid, response);
+            return;
+        }
+
         const response = {
             "text": "Xin lỗi, tôi không thể hiểu được nội dung voice message của bạn. Bạn có thể thử lại hoặc gửi câu hỏi bằng văn bản nhé! 🎵"
         };
@@ -954,25 +1139,95 @@ app.post('/send-test-message', async (req, res) => {
 });
 
 app.get('/health', (req, res) => {
+    const queueStatus = queueManager.getQueueStatus();
     res.status(200).json({ 
         status: 'OK', 
         timestamp: new Date().toISOString(),
         activeRequests: processingRequests.size,
         userSessions: userSessions.size,
         uptime: process.uptime(),
-        memory: process.memoryUsage()
+        memory: process.memoryUsage(),
+        dailyQuotaUsed,
+        dailyQuotaLimit: DAILY_QUOTA_LIMIT,
+        queueManager: {
+            ...queueStatus,
+            averageWaitTime: queueManager.getAverageWaitTime(),
+            queueHealth: queueStatus.waitingQueue < 10 ? 'HEALTHY' : 'BUSY'
+        }
+    });
+});
+
+// Endpoint để xem trạng thái queue chi tiết
+app.get('/queue-status', (req, res) => {
+    const queueStatus = queueManager.getQueueStatus();
+    res.status(200).json({
+        timestamp: new Date().toISOString(),
+        queue: queueStatus,
+        statistics: {
+            averageWaitTime: queueManager.getAverageWaitTime(),
+            queueUtilization: (queueStatus.activeRequests / queueStatus.maxConcurrent * 100).toFixed(2) + '%',
+            totalProcessed: queueStatus.totalProcessed,
+            currentLoad: queueStatus.activeRequests + queueStatus.waitingQueue
+        }
+    });
+});
+
+// Endpoint để reset queue (chỉ dùng trong trường hợp khẩn cấp)
+app.post('/queue-reset', (req, res) => {
+    const { adminKey } = req.body;
+    if (adminKey !== process.env.ADMIN_KEY) {
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    // Clear waiting queue (không thể clear active requests vì đang xử lý)
+    queueManager.waitingQueue = [];
+    console.log('🚨 Queue manually reset by admin');
+    
+    res.status(200).json({
+        message: 'Queue reset successfully',
+        timestamp: new Date().toISOString(),
+        remainingActiveRequests: queueManager.activeRequests.size
     });
 });
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
     console.log('SIGTERM received, shutting down gracefully...');
+    
+    // Thông báo cho users trong queue
+    if (queueManager.waitingQueue.length > 0) {
+        console.log(`Notifying ${queueManager.waitingQueue.length} users in queue about shutdown...`);
+        for (const request of queueManager.waitingQueue) {
+            try {
+                const shutdownMessage = {
+                    "text": "🚨 Hệ thống đang được bảo trì. Vui lòng thử lại sau ít phút. Xin lỗi vì sự bất tiện này! 🙏"
+                };
+                await callSendAPI(request.id, shutdownMessage);
+            } catch (error) {
+                console.error(`Failed to notify user ${request.id} about shutdown:`, error);
+            }
+        }
+    }
+    
+    // Chờ các request đang xử lý hoàn thành
     if (processingRequests.size > 0) {
         console.log(`Waiting for ${processingRequests.size} active requests to complete...`);
         await Promise.allSettled([...processingRequests.values()]);
     }
+    
+    // Chờ các request trong queue manager hoàn thành
+    if (queueManager.activeRequests.size > 0) {
+        console.log(`Waiting for ${queueManager.activeRequests.size} queue manager requests to complete...`);
+        const activePromises = Array.from(queueManager.activeRequests.values()).map(req => 
+            req.handler().catch(error => console.error('Queue request error during shutdown:', error))
+        );
+        await Promise.allSettled(activePromises);
+    }
+    
+    if (quotaResetTimeout) clearTimeout(quotaResetTimeout);
     await pool.end();
     console.log('Database pool closed');
+    console.log('✅ Graceful shutdown completed');
     process.exit(0);
 });
 
@@ -989,7 +1244,11 @@ async function startServer() {
             console.log('   💬 POST /test-message - Test message processing');
             console.log('   📤 POST /send-test-message - Test Facebook send');
             console.log('   ❤️  GET  /health - Health check');
+            console.log('   📊 GET  /queue-status - Queue status details');
+            console.log('   🚨 POST /queue-reset - Emergency queue reset');
             console.log('🎯 User Journey Enhanced Chatbot Ready!');
+            console.log(`📊 Daily quota limit: ${DAILY_QUOTA_LIMIT} requests`);
+            console.log(`⏳ Queue system: Max ${queueManager.maxConcurrent} concurrent, ${queueManager.waitTime/1000}s wait time`);
         });
     } catch (error) {
         console.error('❌ Failed to start server:', error);

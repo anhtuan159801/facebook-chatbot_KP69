@@ -1,11 +1,23 @@
 {
-  "name": "facebook-chatbot-gemini",
-  "version": "2.0.0",
-  "description": "Facebook Messenger Chatbot with Google Gemini integration for Vietnamese public service support",
-  "main": "server.js",
+  "name": "facebook-chatbot-load-balancer",
+  "version": "3.0.0",
+  "description": "Facebook Messenger Chatbot with Load Balancer, Gemini and Router Hug integration for Vietnamese public service support",
+  "main": "load_balancer.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node load_balancer.js",
+    "start:gemini": "node gemini.js",
+    "start:router": "node router_hug.js",
+    "start:all": "node start_system.js start",
+    "stop:all": "node start_system.js stop",
+    "restart:all": "node start_system.js restart",
+    "status": "node start_system.js status",
+    "dev": "nodemon load_balancer.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop all",
+    "pm2:restart": "pm2 restart all",
+    "pm2:logs": "pm2 logs",
+    "pm2:status": "pm2 status",
+    "setup": "node setup.js"
   },
   "keywords": [
     "facebook",
@@ -13,6 +25,8 @@
     "chatbot",
     "ai",
     "gemini",
+    "load-balancer",
+    "failover",
     "vietnamese",
     "public-service"
   ],
@@ -23,7 +37,8 @@
     "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "node-fetch": "^3.3.2",
-    "pg": "^8.12.0"
+    "pg": "^8.12.0",
+    "pm2": "^5.3.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"

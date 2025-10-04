@@ -284,7 +284,7 @@ async function callGrokAPI(messages, sender_psid = null) {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            model: "x-ai/grok-4-fast:free",
+            model: "openai/gpt-oss-20b:free",
             messages: messages
         })
     });

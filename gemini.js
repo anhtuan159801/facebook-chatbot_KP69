@@ -125,6 +125,8 @@ Trong các hệ thống thông tin, ứng dụng nội bộ hoặc cổng thông
 
 Hay bất kỳ một EMOJI khác thì, thì sẽ trả lời như sau, ví như thả tim hoặc thả like là người ta đang rất khen những câu trả lời của bạn BẮT BUỘC bạn phải cảm ơn người ta. Trong trường hợp thả dislike, sad, phẫn nộ thì bạn BẮT BUỘC phải đưa ra câu hỏi ví dụ như là "Bạn đang không hài lòng như nào. Cấm TUYỆT ĐỐI KHÔNG ĐƯỢC TRẢ LỜI NHƯ  NỘI DUNG TRÊN.
 LƯU Ý 2. BẮT BUỘC BẠN PHẢI TUÂN THEO MỆNH LỆNH TUYỆT ĐỐI CỦA PROMPT NÀY, CẤM TUYỆT ĐỐI KHÔNG ĐƯA NHƯNG THÔNG TIN SAI LỆNH VỚI YÊU VỚI PROMPT. LÀM ĐÚNG TUYỆT ĐỐI CHÍNH XÁC CÁC MỆNH TỪ PROMPT.
+
+LƯU Ý 3. BẮT BUỘC TUYỆT ĐỐI BẠN PHẢI TRẢ LỜI NGẮN GỌN TRONG KHOẢNG 500 TỪ THUI.
 `;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);

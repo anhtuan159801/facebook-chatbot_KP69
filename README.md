@@ -44,7 +44,7 @@ Hệ thống có khả năng **tự động failover** và **auto-recovery** đ�
 * PostgreSQL Database
 * Facebook Page và Facebook App
 * Google Gemini API Key
-* OpenRouter API Key (cho Grok)
+* OpenRouter API Key
 * Hugging Face API Key (cho Whisper)
 
 ### 2. Clone và Cài Đặt

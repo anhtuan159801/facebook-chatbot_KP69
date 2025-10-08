@@ -1,0 +1,15 @@
+2025-10-08T09:57:03: ❌ ERROR in processMessage for 7364713036916648: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [429 Too Many Requests] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits.
+2025-10-08T09:57:03:     at _makeRequestInternal (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\@google\generative-ai\dist\index.js:353:19)
+2025-10-08T09:57:03:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-10-08T09:57:03:     at async generateContent (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\@google\generative-ai\dist\index.js:752:22)
+2025-10-08T09:57:03:     at async ChatSession.sendMessage (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\@google\generative-ai\dist\index.js:1027:9)
+2025-10-08T09:57:03:     at async processNormalMessage (C:\AnhTuan\Anh_Tuan\facebook-chatbot\gemini.js:430:20)
+2025-10-08T09:57:03:     at async processMessage (C:\AnhTuan\Anh_Tuan\facebook-chatbot\gemini.js:361:13)
+2025-10-08T09:57:03:     at async messageHandler (C:\AnhTuan\Anh_Tuan\facebook-chatbot\gemini.js:870:13)
+2025-10-08T09:57:03:     at async QueueManager.processRequest (C:\AnhTuan\Anh_Tuan\facebook-chatbot\gemini.js:209:28)
+2025-10-08T09:57:03:     at async handleMessage (C:\AnhTuan\Anh_Tuan\facebook-chatbot\gemini.js:878:9)
+2025-10-08T09:57:03:     at async C:\AnhTuan\Anh_Tuan\facebook-chatbot\gemini.js:719:29 {
+2025-10-08T09:57:03:   status: 429,
+2025-10-08T09:57:03:   statusText: 'Too Many Requests',
+2025-10-08T09:57:03:   errorDetails: undefined
+2025-10-08T09:57:03: }

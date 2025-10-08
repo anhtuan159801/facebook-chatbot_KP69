@@ -1,0 +1,37 @@
+# Render.com Configuration for Facebook Chatbot
+# This file configures your app for deployment on Render.com
+
+services:
+  - type: web
+    name: facebook-chatbot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run render:start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: APP_URL
+        fromService:
+          type: web
+          name: facebook-chatbot
+          property: host
+      - key: VERIFY_TOKEN
+        sync: false
+      - key: PAGE_ACCESS_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: HUGGINGFACE_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ENABLE_DETAILED_LOGS
+        value: "true"

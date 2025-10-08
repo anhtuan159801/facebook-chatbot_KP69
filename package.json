@@ -17,7 +17,11 @@
     "pm2:restart": "pm2 restart all",
     "pm2:logs": "pm2 logs",
     "pm2:status": "pm2 status",
-    "setup": "node setup.js"
+    "setup": "node setup.js",
+    "keep-alive": "node keep-alive.js",
+    "start:with-keepalive": "concurrently \"npm start\" \"npm run keep-alive\"",
+    "render:start": "node render-start.js",
+    "render:simple": "concurrently \"npm start\" \"npm run keep-alive\""
   },
   "keywords": [
     "facebook",
@@ -34,6 +38,7 @@
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.12.0",
+    "concurrently": "^8.2.2",
     "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "node-fetch": "^3.3.2",

@@ -1,0 +1,181 @@
+2025-10-08T09:56:47: [2025-10-08T02:56:47.240Z] [INFO] 🚀 Starting Keep-Alive Service for Render.com
+2025-10-08T09:56:47: [2025-10-08T02:56:47.246Z] [INFO] Target URL: https://your-app-name.onrender.com/health
+2025-10-08T09:56:47: [2025-10-08T02:56:47.246Z] [INFO] Ping interval: 300 seconds
+2025-10-08T09:56:47: [2025-10-08T02:56:47.247Z] [INFO] Health timeout: 30 seconds
+2025-10-08T09:56:47: [2025-10-08T02:56:47.247Z] [INFO] Max retries: 3
+2025-10-08T09:56:47: [2025-10-08T02:56:47.247Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T09:56:48: [2025-10-08T02:56:48.045Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T09:56:48: [2025-10-08T02:56:48.049Z] [INFO] Retrying in 10 seconds...
+2025-10-08T09:56:58: [2025-10-08T02:56:58.065Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T09:56:58: [2025-10-08T02:56:58.752Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T09:56:58: [2025-10-08T02:56:58.753Z] [INFO] Retrying in 10 seconds...
+2025-10-08T09:57:08: [2025-10-08T02:57:08.760Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T09:57:09: [2025-10-08T02:57:09.404Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T09:57:09: [2025-10-08T02:57:09.404Z] [WARN] All ping attempts failed. Error count: 1
+2025-10-08T09:57:09: [2025-10-08T02:57:09.404Z] [ERROR] Initial ping failed, but continuing with scheduled pings Error: HTTP 404: Not Found
+2025-10-08T09:57:09: 
+2025-10-08T09:57:09:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T09:57:09:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T09:57:09:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T09:57:09:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:01:30: [2025-10-08T03:01:30.574Z] [INFO] 🚀 Starting Keep-Alive Service for Render.com
+2025-10-08T10:01:30: [2025-10-08T03:01:30.582Z] [INFO] Target URL: https://your-app-name.onrender.com/health
+2025-10-08T10:01:30: [2025-10-08T03:01:30.583Z] [INFO] Ping interval: 300 seconds
+2025-10-08T10:01:30: [2025-10-08T03:01:30.583Z] [INFO] Health timeout: 30 seconds
+2025-10-08T10:01:30: [2025-10-08T03:01:30.583Z] [INFO] Max retries: 3
+2025-10-08T10:01:30: [2025-10-08T03:01:30.584Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:01:31: [2025-10-08T03:01:31.515Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:01:31: [2025-10-08T03:01:31.516Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:01:41: [2025-10-08T03:01:41.524Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:01:43: [2025-10-08T03:01:43.480Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:01:43: [2025-10-08T03:01:43.481Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:01:53: [2025-10-08T03:01:53.487Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:01:54: [2025-10-08T03:01:54.520Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:01:54: [2025-10-08T03:01:54.521Z] [WARN] All ping attempts failed. Error count: 1
+2025-10-08T10:01:54: [2025-10-08T03:01:54.521Z] [ERROR] Initial ping failed, but continuing with scheduled pings Error: HTTP 404: Not Found
+2025-10-08T10:01:54: 
+2025-10-08T10:01:54:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:01:54:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:01:54:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:01:54:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:06:54: [2025-10-08T03:06:54.527Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:06:55: [2025-10-08T03:06:55.726Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:06:55: [2025-10-08T03:06:55.727Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:07:05: [2025-10-08T03:07:05.729Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:07:06: [2025-10-08T03:07:06.858Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:07:06: [2025-10-08T03:07:06.858Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:07:13: [2025-10-08T03:07:13.496Z] [INFO] 🚀 Starting Keep-Alive Service for Render.com
+2025-10-08T10:07:13: [2025-10-08T03:07:13.503Z] [INFO] Target URL: https://your-app-name.onrender.com/health
+2025-10-08T10:07:13: [2025-10-08T03:07:13.503Z] [INFO] Ping interval: 300 seconds
+2025-10-08T10:07:13: [2025-10-08T03:07:13.504Z] [INFO] Health timeout: 30 seconds
+2025-10-08T10:07:13: [2025-10-08T03:07:13.504Z] [INFO] Max retries: 3
+2025-10-08T10:07:13: [2025-10-08T03:07:13.504Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:07:14: [2025-10-08T03:07:14.705Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:07:14: [2025-10-08T03:07:14.706Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:07:24: [2025-10-08T03:07:24.714Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:07:25: [2025-10-08T03:07:25.798Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:07:25: [2025-10-08T03:07:25.798Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:07:35: [2025-10-08T03:07:35.810Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:07:36: [2025-10-08T03:07:36.675Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:07:36: [2025-10-08T03:07:36.676Z] [WARN] All ping attempts failed. Error count: 1
+2025-10-08T10:07:36: [2025-10-08T03:07:36.676Z] [ERROR] Initial ping failed, but continuing with scheduled pings Error: HTTP 404: Not Found
+2025-10-08T10:07:36: 
+2025-10-08T10:07:36:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:07:36:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:07:36:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:07:36:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:12:36: [2025-10-08T03:12:36.692Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:12:38: [2025-10-08T03:12:38.649Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:12:38: [2025-10-08T03:12:38.650Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:12:48: [2025-10-08T03:12:48.654Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:12:49: [2025-10-08T03:12:49.529Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:12:49: [2025-10-08T03:12:49.530Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:12:59: [2025-10-08T03:12:59.531Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:13:01: [2025-10-08T03:13:01.080Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:13:01: [2025-10-08T03:13:01.081Z] [WARN] All ping attempts failed. Error count: 2
+2025-10-08T10:13:01: [2025-10-08T03:13:01.081Z] [ERROR] Scheduled ping failed Error: HTTP 404: Not Found
+2025-10-08T10:13:01: 
+2025-10-08T10:13:01:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:13:01:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:13:01:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:13:01:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:14:03: [2025-10-08T03:14:03.152Z] [INFO] 🚀 Starting Keep-Alive Service for Render.com
+2025-10-08T10:14:03: [2025-10-08T03:14:03.157Z] [INFO] Target URL: https://your-app-name.onrender.com/health
+2025-10-08T10:14:03: [2025-10-08T03:14:03.158Z] [INFO] Ping interval: 300 seconds
+2025-10-08T10:14:03: [2025-10-08T03:14:03.158Z] [INFO] Health timeout: 30 seconds
+2025-10-08T10:14:03: [2025-10-08T03:14:03.158Z] [INFO] Max retries: 3
+2025-10-08T10:14:03: [2025-10-08T03:14:03.159Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:14:04: [2025-10-08T03:14:04.462Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:14:04: [2025-10-08T03:14:04.463Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:14:14: [2025-10-08T03:14:14.468Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:14:16: [2025-10-08T03:14:16.060Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:14:16: [2025-10-08T03:14:16.061Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:14:26: [2025-10-08T03:14:26.075Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:14:28: [2025-10-08T03:14:28.102Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:14:28: [2025-10-08T03:14:28.103Z] [WARN] All ping attempts failed. Error count: 1
+2025-10-08T10:14:28: [2025-10-08T03:14:28.103Z] [ERROR] Initial ping failed, but continuing with scheduled pings Error: HTTP 404: Not Found
+2025-10-08T10:14:28: 
+2025-10-08T10:14:28:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:14:28:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:14:28:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:14:28:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:17:20: [2025-10-08T03:17:20.278Z] [INFO] 🚀 Starting Keep-Alive Service for Render.com
+2025-10-08T10:17:20: [2025-10-08T03:17:20.281Z] [INFO] Target URL: https://your-app-name.onrender.com/health
+2025-10-08T10:17:20: [2025-10-08T03:17:20.282Z] [INFO] Ping interval: 300 seconds
+2025-10-08T10:17:20: [2025-10-08T03:17:20.282Z] [INFO] Health timeout: 30 seconds
+2025-10-08T10:17:20: [2025-10-08T03:17:20.282Z] [INFO] Max retries: 3
+2025-10-08T10:17:20: [2025-10-08T03:17:20.282Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:17:22: [2025-10-08T03:17:22.377Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:17:22: [2025-10-08T03:17:22.378Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:17:32: [2025-10-08T03:17:32.382Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:17:32: [2025-10-08T03:17:32.986Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:17:32: [2025-10-08T03:17:32.987Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:17:42: [2025-10-08T03:17:42.989Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:17:43: [2025-10-08T03:17:43.985Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:17:43: [2025-10-08T03:17:43.987Z] [WARN] All ping attempts failed. Error count: 1
+2025-10-08T10:17:43: [2025-10-08T03:17:43.987Z] [ERROR] Initial ping failed, but continuing with scheduled pings Error: HTTP 404: Not Found
+2025-10-08T10:17:43: 
+2025-10-08T10:17:43:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:17:43:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:17:43:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:17:43:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:22:43: [2025-10-08T03:22:43.990Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:22:46: [2025-10-08T03:22:46.152Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:22:46: [2025-10-08T03:22:46.152Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:22:56: [2025-10-08T03:22:56.156Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:22:58: [2025-10-08T03:22:58.219Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:22:58: [2025-10-08T03:22:58.219Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:23:08: [2025-10-08T03:23:08.223Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:23:09: [2025-10-08T03:23:09.068Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:23:09: [2025-10-08T03:23:09.070Z] [WARN] All ping attempts failed. Error count: 2
+2025-10-08T10:23:09: [2025-10-08T03:23:09.070Z] [ERROR] Scheduled ping failed Error: HTTP 404: Not Found
+2025-10-08T10:23:09: 
+2025-10-08T10:23:09:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:23:09:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:23:09:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:23:09:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:28:09: [2025-10-08T03:28:09.075Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:28:10: [2025-10-08T03:28:10.202Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:28:10: [2025-10-08T03:28:10.202Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:28:20: [2025-10-08T03:28:20.207Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:28:21: [2025-10-08T03:28:21.165Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:28:21: [2025-10-08T03:28:21.166Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:28:31: [2025-10-08T03:28:31.175Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:28:33: [2025-10-08T03:28:33.156Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:28:33: [2025-10-08T03:28:33.156Z] [WARN] All ping attempts failed. Error count: 3
+2025-10-08T10:28:33: [2025-10-08T03:28:33.157Z] [ERROR] Scheduled ping failed Error: HTTP 404: Not Found
+2025-10-08T10:28:33: 
+2025-10-08T10:28:33:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:28:33:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:28:33:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:28:33:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:33:33: [2025-10-08T03:33:33.159Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:33:35: [2025-10-08T03:33:35.226Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:33:35: [2025-10-08T03:33:35.226Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:33:45: [2025-10-08T03:33:45.241Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:33:46: [2025-10-08T03:33:46.326Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:33:46: [2025-10-08T03:33:46.327Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:33:56: [2025-10-08T03:33:56.327Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:33:59: [2025-10-08T03:33:59.007Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:33:59: [2025-10-08T03:33:59.007Z] [WARN] All ping attempts failed. Error count: 4
+2025-10-08T10:33:59: [2025-10-08T03:33:59.007Z] [ERROR] Scheduled ping failed Error: HTTP 404: Not Found
+2025-10-08T10:33:59: 
+2025-10-08T10:33:59:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:33:59:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:33:59:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:33:59:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+2025-10-08T10:38:59: [2025-10-08T03:38:59.017Z] [INFO] Ping attempt 1/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:39:00: [2025-10-08T03:39:00.936Z] [ERROR] ❌ Ping failed (attempt 1/3) { error: 'HTTP 404: Not Found\n', attempt: 1 }
+2025-10-08T10:39:00: [2025-10-08T03:39:00.936Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:39:10: [2025-10-08T03:39:10.946Z] [INFO] Ping attempt 2/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:39:13: [2025-10-08T03:39:13.054Z] [ERROR] ❌ Ping failed (attempt 2/3) { error: 'HTTP 404: Not Found\n', attempt: 2 }
+2025-10-08T10:39:13: [2025-10-08T03:39:13.054Z] [INFO] Retrying in 10 seconds...
+2025-10-08T10:39:23: [2025-10-08T03:39:23.061Z] [INFO] Ping attempt 3/3 to https://your-app-name.onrender.com/health
+2025-10-08T10:39:25: [2025-10-08T03:39:25.098Z] [ERROR] ❌ Ping failed (attempt 3/3) { error: 'HTTP 404: Not Found\n', attempt: 3 }
+2025-10-08T10:39:25: [2025-10-08T03:39:25.098Z] [WARN] All ping attempts failed. Error count: 5
+2025-10-08T10:39:25: [2025-10-08T03:39:25.098Z] [ERROR] Scheduled ping failed Error: HTTP 404: Not Found
+2025-10-08T10:39:25: 
+2025-10-08T10:39:25:     at IncomingMessage.<anonymous> (C:\AnhTuan\Anh_Tuan\facebook-chatbot\keep-alive.js:116:32)
+2025-10-08T10:39:25:     at IncomingMessage.emit (node:events:530:35)
+2025-10-08T10:39:25:     at endReadableNT (node:internal/streams/readable:1698:12)
+2025-10-08T10:39:25:     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)

@@ -4,104 +4,27 @@ const { Pool } = require('pg');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// === KHÔNG DÙNG GEMINI NỮA ===
-const SYSTEM_PROMPT = `OPERATING PRINCIPLES
-## 1. Persona & Role
-You are the 'Public Service Assistant,' developed by the Management Board of Quarter 69, Tan Thoi Nhat Ward, Ho Chi Minh City. With your trained knowledge, you are a friendly and deeply knowledgeable consultant on the public service applications of the Vietnamese government. Your philosophy is to empower citizens, helping everyone use digital utilities easily, confidently, and accurately. If you encounter any issues during usage, you can contact Zalo 0778649573 - Mr. Tuan for support.
----
-## 2. Knowledge Base
-Your knowledge focuses deeply on the most popular applications and portals, including:
-- VNeID: Electronic identification, document integration, travel declarations, etc.
-- VssID: Digital Social Insurance.
-- National Public Service Portal: Submitting applications, online payments, etc.
-- Party Member's Handbook:
-- ETAX: Online tax declaration, electronic invoice, personal & corporate income tax finalization – the official e-tax software of the General Department of Taxation, Vietnam.
-- Other related applications when mentioned by the user.
-IMPORTANT: Every instruction you give MUST be verifiable on the official website or the latest user guide of the above services. You are strictly prohibited from inventing steps, buttons, or menu names that do not exist.
----
-## 3. Restrictions
-- You must NEVER answer or discuss topics related to RELIGION, GENDER, or other SENSITIVE ISSUES. 
-- If the user asks about these, politely respond: "Sorry 👋, I can only support questions about digital public services. Please ask me about VNeID, VssID, National Public Service Portal, ETAX, or related applications." 
----
-## 4. Communication Rules & Tone (MOST IMPORTANT)
-### 4.1. Text Formatting
-IMPORTANT: Facebook Messenger does NOT support markdown. Absolutely DO NOT use:
-- ** or * for bold/italics
-- # for headings
-- \`\`\` for code
-- Any other markdown symbols
-Instead:
-- Use ALL CAPS to emphasize important keywords
-- Use a colon (:) after headings
-- Use a hyphen (-) or bullet (•) for lists
-- Write in plain text, with no formatting
-### 4.2. Tone of Voice
-- Friendly and Patient: Always use a friendly, positive, and patient tone. Treat the user like a friend who needs help with technology.
-- Simplify: Absolutely avoid complex technical terms or dry administrative jargon. Explain everything in everyday language that is as easy to understand as possible.
-### 4.3. Use of Emojis
-- Enhance Visuals: Flexibly use appropriate emojis to make instructions more lively and easier to follow.
-- Suggested Use:
-  - 📱 for actions on a phone/app
-  - 🔍 to indicate a search action
-  - ⚙️ for the "Settings" section
-  - ➡️ to indicate sequential steps
-  - ✅ to confirm completion
-  - 👋 for greetings
-  - 📷 for responding to images
-  - 🔧 to indicate error fixing
-### 4.4. Image Handling
-Now SUPPORTED via Grok API.
----
-## 5. Context Usage Instructions
-When provided with relevant context from documentation:
-1. ALWAYS prioritize information from the provided context.
-2. If the context contains specific steps or procedures, follow them exactly.
-3. If the context does not fully answer the question, supplement it with your general knowledge.
-4. Always maintain a friendly, emoji-rich communication style even when using context information.
-5. Adapt the context information to the user's specific question.
-6. BẮT BUỘC TUYỆT ĐỐI: Bạn PHẢI TRẢ LỜI bằng NGÔN NGỮ mà người dùng dùng để hỏi. Nếu người dùng hỏi bằng tiếng Việt, bạn phải trả lời bằng tiếng Việt. Nếu người dùng hỏi bằng tiếng Anh, bạn phải trả lời bằng tiếng Anh. Nếu người dùng hỏi bằng ngôn ngữ khác (Trung, Hàn, Nhật, Pháp, v.v.), bạn PHẢI trả lời bằng chính ngôn ngữ đó. KHÔNG ĐƯỢC tự ý đổi ngôn ngữ. NGÔN NGỮ TRẢ LỜI PHẢI GIỐNG NGÔN NGỮ NGƯỜI DÙNG DÙNG.
----
-## 6. Sample Example (For Text-Based Questions)
-User's Question: "How do I integrate my driver's license into VNeID?"
-SAMPLE RESPONSE (100% Correct):
-Hello 👋, to integrate your Driver's License (GPLX) into VNeID, just follow these simple steps:
-📱 STEP 1: Open the VNeID App and Log In
-- Open the VNeID application on your phone
-- Log in to your Level 2 electronic identification account
-📁 STEP 2: Access the Document Wallet
-- On the main screen, select the "Document Wallet" section
-➕ STEP 3: Begin Information Integration
-- Select "Integrate Information"
-- Tap on "Create New Request"
-🚗 STEP 4: Select and Enter Driver's License Information
-- In the "Information Type" field, select "Driver's License"
-- Enter your correct "License Number" and "License Class"
-- Check the box "I confirm the above information is correct" and then tap "Submit Request"
-✨ ALL DONE! The system will take some time for review. Once successfully approved, your driver's license will appear in the "Document Wallet". Wishing you success! ✅
----
-## 7. Important Notes
-- All content returned must be FACTUAL and VERIFIABLE; do NOT invent information.
-- You MUST reply in the SAME LANGUAGE the user used.
-- Always analyze the image carefully before providing instructions.
-- Ensure you correctly understand the error from the image before advising.
-- Provide specific guidance based on the actual interface shown in the image.
-- The response content should be around 250-300 words when an image is involved.
----
-## 8. GỢI Ý CÂU HỎI TIẾP THEO
-Sau khi trả lời xong, nếu có thể, hãy đưa ra 2–3 câu hỏi liên quan mà người dùng có thể muốn hỏi tiếp theo.
-**QUAN TRỌNG** - **BẮT BUỘC** - **TUYỆT ĐỐI**: Mỗi câu hỏi gợi ý PHẢI DƯỚI 20 KÝ TỰ để hiển thị trên Facebook Messenger.
-**QUAN TRỌNG** - **BẮT BUỘC** - **TUYỆT ĐỐI**: Định dạng như sau:
-GỢI Ý:
-• Scan giấy tờ?
-• Mẫu CT01 ở đâu?
-• Không có chỗ ở?
-HOẶC
-VÍ DỤ:
-• Tích hợp thẻ BHYT nhưng không thành công?
-• Tích hợp bằng lái xe nhưng bị lỗi?
-• Tích hợp thông tin cá nhân nhưng không hiển thị?
-Lưu ý: Nếu không có tiêu đề rõ ràng (GỢI Ý:, SUGGESTIONS:, VÍ DỤ:), vui lòng không tạo quick replies.
-`;
+// === IMPORT PROMPTS FROM CENTRALIZED FILE ===
+const { 
+    SYSTEM_PROMPT, 
+    IMAGE_ANALYSIS_PROMPT, 
+    AUDIO_TRANSCRIPTION_PROMPT,
+    CONTEXT_PROMPTS,
+    ERROR_PROMPTS,
+    RATING_RESPONSES,
+    JOURNEY_MESSAGES,
+    getEnhancedPrompt,
+    getErrorMessage,
+    getRatingResponse,
+    getJourneyMessage
+} = require('./prompts');
+
+// === IMPORT AI MODELS FROM CENTRALIZED FILE ===
+const { 
+    AIFactory, 
+    createRetryWrapper, 
+    createTimeoutWrapper 
+} = require('./ai-models');
 
 const pool = new Pool({
     host: process.env.DB_HOST,
@@ -147,81 +70,22 @@ function extractSuggestions(text) {
     return { suggestions: [], cleanedText: text };
 }
 
-// ==== GỌI GROK QUA OPENROUTER ====
-async function callGrokAPI(messages, sender_psid = null) {
-    const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-    const YOUR_SITE_URL = process.env.YOUR_SITE_URL || 'https://example.com';
-    const YOUR_SITE_NAME = process.env.YOUR_SITE_NAME || 'PublicServiceBot';
+// ==== AI API INTEGRATION (CENTRALIZED) ====
+// Initialize AI models
+const openRouterAI = AIFactory.createOpenRouterAI();
+const huggingFaceAI = AIFactory.createHuggingFaceAI();
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-            "HTTP-Referer": YOUR_SITE_URL,
-            "X-Title": YOUR_SITE_NAME,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            model: "x-ai/grok-4-fast:free",
-            messages: messages
-        })
-    });
+// Create retry and timeout wrappers
+const callGrokAPI = createTimeoutWrapper(
+    createRetryWrapper(openRouterAI.generateText.bind(openRouterAI), 3, 1000),
+    30000
+);
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ Grok API error: ${response.status}`, errorText);
-        throw new Error(`Grok API failed: ${response.status}`);
-    }
+const transcribeAudioWithWhisper = createTimeoutWrapper(
+    createRetryWrapper(huggingFaceAI.transcribeAudio.bind(huggingFaceAI), 2, 2000),
+    60000
+);
 
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
-}
-
-// ==== WHISPER TRÊN HUGGING FACE ====
-async function transcribeAudioWithWhisper(audioBuffer, mimeType) {
-    const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
-    if (!HUGGINGFACE_API_KEY) {
-        throw new Error("HUGGINGFACE_API_KEY is required for audio transcription");
-    }
-
-    // Chuẩn hóa MIME type sang định dạng Hugging Face chấp nhận
-    const supportedTypes = {
-        'audio/mp4': 'audio/m4a',
-        'audio/mpeg': 'audio/mpeg',
-        'audio/wav': 'audio/wav',
-        'audio/ogg': 'audio/ogg',
-        'audio/webm': 'audio/webm',
-        'audio/flac': 'audio/flac',
-        'audio/x-m4a': 'audio/m4a'
-    };
-
-    const contentType = supportedTypes[mimeType] || 'audio/m4a'; // fallback
-
-    const response = await fetch(
-        "https://api-inference.huggingface.co/models/openai/whisper-large-v3",
-        {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${HUGGINGFACE_API_KEY}`,
-                "Content-Type": contentType
-            },
-            body: audioBuffer // GỬI RAW BUFFER, KHÔNG DÙNG FORMDATA
-        }
-    );
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ Whisper error: ${response.status}`, errorText);
-        throw new Error(`Whisper failed: ${response.status}`);
-    }
-
-    const result = await response.json();
-    if (typeof result.text === 'string') {
-        return result.text.trim();
-    } else {
-        throw new Error("Unexpected Whisper response format");
-    }
-}
 // ==== XỬ LÝ TIN NHẮN VĂN BẢN ====
 async function processNormalMessage(sender_psid, userMessage) {
     const history = await getConversationHistory(sender_psid);
@@ -229,23 +93,27 @@ async function processNormalMessage(sender_psid, userMessage) {
         history.shift();
     }
 
-    let enhancedSystemPrompt = SYSTEM_PROMPT;
+    // Enhanced system prompt with context awareness
+    let contextType = null;
     const recentMessages = history.slice(-5).map(msg => msg.parts[0].text).join(' ');
+    
     if (userMessage.toLowerCase().includes('quên mật khẩu') || 
         userMessage.toLowerCase().includes('lỗi đăng nhập') ||
         userMessage.toLowerCase().includes('không truy cập') ||
         userMessage.toLowerCase().includes('bị khóa') ||
         userMessage.toLowerCase().includes('không nhớ')) {
         if (recentMessages.includes('VNeID')) {
-            enhancedSystemPrompt += "\nCURRENT CONTEXT: User is currently working with VNeID service.";
+            contextType = 'VNeID';
         } else if (recentMessages.includes('ETAX') || recentMessages.includes('thuế')) {
-            enhancedSystemPrompt += "\nCURRENT CONTEXT: User is currently working with ETAX service.";
+            contextType = 'ETAX';
         } else if (recentMessages.includes('VssID') || recentMessages.includes('bảo hiểm')) {
-            enhancedSystemPrompt += "\nCURRENT CONTEXT: User is currently working with VssID service.";
+            contextType = 'VssID';
         } else if (recentMessages.includes('Cổng Dịch vụ') || recentMessages.includes('dịch vụ công')) {
-            enhancedSystemPrompt += "\nCURRENT CONTEXT: User is currently working with National Public Service Portal.";
+            contextType = 'PUBLIC_SERVICE';
         }
     }
+    
+    const enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
 
     const messages = [
         { role: "system", content: enhancedSystemPrompt },
@@ -259,7 +127,7 @@ async function processNormalMessage(sender_psid, userMessage) {
     try {
         let text = await callGrokAPI(messages, sender_psid);
         if (!text || text.trim() === '') {
-            text = "Xin lỗi, hiện mình chưa thể xử lý câu hỏi này. Bạn vui lòng thử lại sau nhé! 🙏";
+            text = getErrorMessage('SYSTEM_ERROR');
         }
 
         if (text.includes('STEP')) {
@@ -296,7 +164,7 @@ async function processNormalMessage(sender_psid, userMessage) {
     } catch (error) {
         console.error(`❌ ERROR in processNormalMessage for ${sender_psid}:`, error);
         const errorResponse = {
-            "text": "Xin lỗi, hiện tại tôi đang gặp sự cố kỹ thuật. Bạn vui lòng thử lại sau ít phút nhé! 🙏"
+            "text": getErrorMessage('SYSTEM_ERROR')
         };
         await callSendAPI(sender_psid, errorResponse);
     }
@@ -317,7 +185,7 @@ async function processImageAttachment(sender_psid, attachment) {
             {
                 role: "user",
                 content: [
-                    { type: "text", text: "Bạn là chuyên gia hỗ trợ người dùng chính phủ Việt Nam. Hãy mô tả nội dung hình ảnh và đưa ra hướng dẫn phù hợp. Nếu có lỗi, hãy chỉ rõ lỗi và cách khắc phục." },
+                    { type: "text", text: IMAGE_ANALYSIS_PROMPT },
                     { type: "image_url", image_url: { url: dataUrl } }
                 ]
             }
@@ -325,7 +193,7 @@ async function processImageAttachment(sender_psid, attachment) {
 
         let text = await callGrokAPI(messages, sender_psid);
         if (!text || text.trim() === '') {
-            text = "Xin lỗi, tôi không thể xử lý hình ảnh này. Bạn có thể mô tả lỗi bằng văn bản để tôi hỗ trợ nhé! 📝";
+            text = getErrorMessage('IMAGE_ERROR');
         }
 
         const extractionResult = extractSuggestions(text);
@@ -338,7 +206,7 @@ async function processImageAttachment(sender_psid, attachment) {
     } catch (error) {
         console.error(`❌ Error processing image for ${sender_psid}:`, error);
         const response = {
-            "text": "Xin lỗi, tôi không thể xử lý hình ảnh này. Bạn có thể mô tả lỗi bằng văn bản để tôi hỗ trợ nhé! 📝"
+            "text": getErrorMessage('IMAGE_ERROR')
         };
         await callSendAPI(sender_psid, response);
     }
@@ -361,15 +229,18 @@ async function processAudioAttachment(sender_psid, attachment) {
             history.shift();
         }
 
-        let enhancedSystemPrompt = SYSTEM_PROMPT;
+        // Enhanced system prompt with context awareness for audio
+        let contextType = null;
         const recent = history.slice(-3).map(m => m.parts[0].text).join(' ');
         if (recent.includes('VNeID')) {
-            enhancedSystemPrompt += "\nCURRENT CONTEXT: User is currently working with VNeID service.";
+            contextType = 'VNeID';
         } else if (recent.includes('ETAX') || recent.includes('thuế')) {
-            enhancedSystemPrompt += "\nCURRENT CONTEXT: User is currently working with ETAX service.";
+            contextType = 'ETAX';
         } else if (recent.includes('VssID') || recent.includes('bảo hiểm')) {
-            enhancedSystemPrompt += "\nCURRENT CONTEXT: User is currently working with VssID service.";
+            contextType = 'VssID';
         }
+        
+        const enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
 
         const messages = [
             { role: "system", content: enhancedSystemPrompt },
@@ -379,20 +250,37 @@ async function processAudioAttachment(sender_psid, attachment) {
 
         let text = await callGrokAPI(messages, sender_psid);
         if (!text || text.trim() === '') {
-            text = "Xin lỗi, hiện mình chưa thể xử lý câu hỏi này. Bạn vui lòng thử lại sau nhé! 🙏";
+            text = getErrorMessage('SYSTEM_ERROR');
         }
 
         const extractionResult = extractSuggestions(text);
         const quickReplies = extractionResult.suggestions;
         text = extractionResult.cleanedText;
-        const response = { "text": text };
-        await callSendAPIWithRating(sender_psid, response, quickReplies);
+        
+        // Chia nhỏ tin nhắn dài trước khi gửi
+        if (text.length > 2000) {
+            const chunks = splitMessage(text, 2000);
+            for (let i = 0; i < chunks.length; i++) {
+                const isLast = i === chunks.length - 1;
+                const res = { text: chunks[i] };
+                if (isLast) {
+                    await callSendAPIWithRating(sender_psid, res, quickReplies);
+                } else {
+                    await callSendAPI(sender_psid, res);
+                }
+                if (!isLast) await new Promise(r => setTimeout(r, 500));
+            }
+        } else {
+            const response = { "text": text };
+            await callSendAPIWithRating(sender_psid, response, quickReplies);
+        }
+        
         await saveConversation(sender_psid, `[Voice: ${transcript}]`, text);
         console.log(`✅ Processed audio question for ${sender_psid}: "${transcript}"`);
     } catch (error) {
         console.error(`❌ Error processing audio for ${sender_psid}:`, error);
         const response = {
-            "text": "Xin lỗi, tôi không thể hiểu được nội dung voice message của bạn. Bạn có thể thử lại hoặc gửi câu hỏi bằng văn bản nhé! 🎵"
+            "text": getErrorMessage('AUDIO_ERROR')
         };
         await callSendAPI(sender_psid, response);
     }
@@ -579,9 +467,7 @@ async function handleRating(sender_psid, ratingText) {
         else if (ratingText.includes('👎') || ratingText.includes('Cần cải thiện')) rating = 'not_helpful';
 
         await pool.query('INSERT INTO feedback (user_id, rating, created_at) VALUES ($1, $2, NOW())', [sender_psid, rating]);
-        const msg = rating === 'helpful' 
-            ? "Cảm ơn bạn! Rất vui khi có thể giúp đỡ bạn 😊" 
-            : "Cảm ơn phản hồi của bạn! Chúng tôi sẽ cố gắng cải thiện hơn nữa 🙏";
+        const msg = getRatingResponse(rating);
         await callSendAPI(sender_psid, { text: msg });
     } catch (error) {
         console.error(`❌ Rating error for ${sender_psid}:`, error);
@@ -681,19 +567,95 @@ async function processAttachment(sender_psid, message, requestKey) {
 
 // ==== CHIA NHỎ TIN NHẮN DÀI ====
 function splitMessage(text, maxLength) {
+    if (text.length <= maxLength) {
+        return [text];
+    }
+    
     const chunks = [];
     let currentChunk = '';
     const lines = text.split('\n');
+    
     for (const line of lines) {
-        if ((currentChunk + line + '\n').length <= maxLength) {
-            currentChunk += line + '\n';
+        // Nếu dòng hiện tại quá dài, chia nhỏ nó
+        if (line.length > maxLength) {
+            // Lưu chunk hiện tại nếu có
+            if (currentChunk) {
+                chunks.push(currentChunk.trim());
+                currentChunk = '';
+            }
+            
+            // Chia dòng dài thành các phần nhỏ
+            const words = line.split(' ');
+            let tempLine = '';
+            for (const word of words) {
+                if ((tempLine + word + ' ').length <= maxLength) {
+                    tempLine += word + ' ';
+                } else {
+                    if (tempLine) {
+                        chunks.push(tempLine.trim());
+                    }
+                    tempLine = word + ' ';
+                }
+            }
+            if (tempLine) {
+                currentChunk = tempLine;
+            }
         } else {
-            if (currentChunk) chunks.push(currentChunk.trim());
-            currentChunk = line + '\n';
+            // Dòng bình thường
+            if ((currentChunk + line + '\n').length <= maxLength) {
+                currentChunk += line + '\n';
+            } else {
+                if (currentChunk) {
+                    chunks.push(currentChunk.trim());
+                }
+                currentChunk = line + '\n';
+            }
         }
     }
-    if (currentChunk) chunks.push(currentChunk.trim());
-    return chunks;
+    
+    if (currentChunk) {
+        chunks.push(currentChunk.trim());
+    }
+    
+    // Kiểm tra lại và chia nhỏ các chunk vẫn còn quá dài
+    const finalChunks = [];
+    for (const chunk of chunks) {
+        if (chunk.length <= maxLength) {
+            finalChunks.push(chunk);
+        } else {
+            // Chia nhỏ chunk vẫn còn quá dài
+            const words = chunk.split(' ');
+            let tempChunk = '';
+            for (const word of words) {
+                if ((tempChunk + word + ' ').length <= maxLength) {
+                    tempChunk += word + ' ';
+                } else {
+                    if (tempChunk) {
+                        finalChunks.push(tempChunk.trim());
+                    }
+                    tempChunk = word + ' ';
+                }
+            }
+            if (tempChunk) {
+                finalChunks.push(tempChunk.trim());
+            }
+        }
+    }
+    
+    // Kiểm tra lần cuối và chia nhỏ nếu cần
+    const result = [];
+    for (const chunk of finalChunks) {
+        if (chunk.length <= maxLength) {
+            result.push(chunk);
+        } else {
+            // Chia nhỏ theo ký tự nếu không có space
+            for (let i = 0; i < chunk.length; i += maxLength) {
+                result.push(chunk.substring(i, i + maxLength));
+            }
+        }
+    }
+    
+    return result;
 }
 
 // ==== TEST ENDPOINTS ====

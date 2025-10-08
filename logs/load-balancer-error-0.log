@@ -1,0 +1,22 @@
+2025-10-08T10:14:08: ReferenceError: loadBalancer is not defined
+2025-10-08T10:14:08:     at C:\AnhTuan\Anh_Tuan\facebook-chatbot\load_balancer.js:405:5
+2025-10-08T10:14:08:     at Layer.handle [as handle_request] (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\layer.js:95:5)
+2025-10-08T10:14:08:     at next (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\route.js:149:13)
+2025-10-08T10:14:08:     at Route.dispatch (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\route.js:119:3)
+2025-10-08T10:14:08:     at Layer.handle [as handle_request] (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\layer.js:95:5)
+2025-10-08T10:14:08:     at C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\index.js:284:15
+2025-10-08T10:14:08:     at Function.process_params (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\index.js:346:12)
+2025-10-08T10:14:08:     at next (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\index.js:280:10)
+2025-10-08T10:14:08:     at jsonParser (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\body-parser\lib\types\json.js:113:7)
+2025-10-08T10:14:08:     at Layer.handle [as handle_request] (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\layer.js:95:5)
+2025-10-08T10:17:27: ReferenceError: loadBalancer is not defined
+2025-10-08T10:17:27:     at C:\AnhTuan\Anh_Tuan\facebook-chatbot\load_balancer.js:405:5
+2025-10-08T10:17:27:     at Layer.handle [as handle_request] (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\layer.js:95:5)
+2025-10-08T10:17:27:     at next (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\route.js:149:13)
+2025-10-08T10:17:27:     at Route.dispatch (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\route.js:119:3)
+2025-10-08T10:17:27:     at Layer.handle [as handle_request] (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\layer.js:95:5)
+2025-10-08T10:17:27:     at C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\index.js:284:15
+2025-10-08T10:17:27:     at Function.process_params (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\index.js:346:12)
+2025-10-08T10:17:27:     at next (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\index.js:280:10)
+2025-10-08T10:17:27:     at jsonParser (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\body-parser\lib\types\json.js:113:7)
+2025-10-08T10:17:27:     at Layer.handle [as handle_request] (C:\AnhTuan\Anh_Tuan\facebook-chatbot\node_modules\express\lib\router\layer.js:95:5)

@@ -1,0 +1,93 @@
+2025-10-08T09:56:48: 🚀 Chatbot server is running on port 3001
+2025-10-08T09:56:48: 🌍 Environment: production
+2025-10-08T09:56:48: 🔧 Available endpoints:
+2025-10-08T09:56:48:    ✅ GET  /webhook - Facebook verification
+2025-10-08T09:56:48:    🤖 POST /webhook - Pure Gemini AI processing
+2025-10-08T09:56:48:    🧪 GET  /test - Server status
+2025-10-08T09:56:48:    💬 POST /test-message - Test message processing
+2025-10-08T09:56:48:    📤 POST /send-test-message - Test Facebook send
+2025-10-08T09:56:48:    ❤️  GET  /health - Health check
+2025-10-08T09:56:48:    📊 GET  /queue-status - Queue status details
+2025-10-08T09:56:48:    🚨 POST /queue-reset - Emergency queue reset
+2025-10-08T09:56:48: 🎯 User Journey Enhanced Chatbot Ready!
+2025-10-08T09:56:48: 📊 Daily quota limit: 45 requests
+2025-10-08T09:56:48: ⏳ Queue system: Max 5 concurrent, 60s wait time
+2025-10-08T09:57:02: 📤 Valid message found, processing...
+2025-10-08T09:57:02: 📋 Queue Manager: Request 7364713036916648 (Queue #1) received
+2025-10-08T09:57:02: 🚀 Queue Manager: Processing request 7364713036916648 (Queue #1)
+2025-10-08T09:57:02: === PROCESS MESSAGE START ===
+2025-10-08T09:57:02: Sender PSID: 7364713036916648
+2025-10-08T09:57:02: Message text: Hi
+2025-10-08T09:57:02: 🤖 Processing user message: "Hi"
+2025-10-08T09:57:03: 🤖 Sending message to Gemini...
+2025-10-08T09:57:03: Sending message to 7364713036916648 (attempt 1/3)
+2025-10-08T09:57:06: ✅ Message sent successfully to 7364713036916648!
+2025-10-08T09:57:06: === PROCESS MESSAGE END ===
+2025-10-08T09:57:06: 
+2025-10-08T09:57:06: ✅ Queue Manager: Request 7364713036916648 completed in 4140ms
+2025-10-08T09:57:06: 📊 Queue Manager: Active requests: 0/5
+2025-10-08T09:57:06: ✅ Message processed successfully
+2025-10-08T09:57:06: 🏁 Webhook processing completed
+2025-10-08T09:57:06: 
+2025-10-08T10:01:29: 🚀 Chatbot server is running on port 3001
+2025-10-08T10:01:29: 🌍 Environment: production
+2025-10-08T10:01:29: 🔧 Available endpoints:
+2025-10-08T10:01:29:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:01:29:    🤖 POST /webhook - Pure Gemini AI processing
+2025-10-08T10:01:29:    🧪 GET  /test - Server status
+2025-10-08T10:01:29:    💬 POST /test-message - Test message processing
+2025-10-08T10:01:29:    📤 POST /send-test-message - Test Facebook send
+2025-10-08T10:01:29:    ❤️  GET  /health - Health check
+2025-10-08T10:01:29:    📊 GET  /queue-status - Queue status details
+2025-10-08T10:01:29:    🚨 POST /queue-reset - Emergency queue reset
+2025-10-08T10:01:29: 🎯 User Journey Enhanced Chatbot Ready!
+2025-10-08T10:01:29: 📊 Daily quota limit: 45 requests
+2025-10-08T10:01:29: ⏳ Queue system: Max 5 concurrent, 60s wait time
+2025-10-08T10:07:12: 🚀 Chatbot server is running on port 3001
+2025-10-08T10:07:12: 🌍 Environment: production
+2025-10-08T10:07:12: 🔧 Available endpoints:
+2025-10-08T10:07:12:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:07:12:    🤖 POST /webhook - Pure Gemini AI processing
+2025-10-08T10:07:12:    🧪 GET  /test - Server status
+2025-10-08T10:07:12:    💬 POST /test-message - Test message processing
+2025-10-08T10:07:12:    📤 POST /send-test-message - Test Facebook send
+2025-10-08T10:07:12:    ❤️  GET  /health - Health check
+2025-10-08T10:07:12:    📊 GET  /queue-status - Queue status details
+2025-10-08T10:07:12:    🚨 POST /queue-reset - Emergency queue reset
+2025-10-08T10:07:12: 🎯 User Journey Enhanced Chatbot Ready!
+2025-10-08T10:07:12: 📊 Daily quota limit: 45 requests
+2025-10-08T10:07:12: ⏳ Queue system: Max 5 concurrent, 60s wait time
+2025-10-08T10:14:02: 🚀 Chatbot server is running on port 3001
+2025-10-08T10:14:02: 🌍 Environment: production
+2025-10-08T10:14:02: 🔧 Available endpoints:
+2025-10-08T10:14:02:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:14:02:    🤖 POST /webhook - Pure Gemini AI processing
+2025-10-08T10:14:02:    🧪 GET  /test - Server status
+2025-10-08T10:14:02:    💬 POST /test-message - Test message processing
+2025-10-08T10:14:02:    📤 POST /send-test-message - Test Facebook send
+2025-10-08T10:14:02:    ❤️  GET  /health - Health check
+2025-10-08T10:14:02:    📊 GET  /queue-status - Queue status details
+2025-10-08T10:14:02:    🚨 POST /queue-reset - Emergency queue reset
+2025-10-08T10:14:02: 🎯 User Journey Enhanced Chatbot Ready!
+2025-10-08T10:14:02: 📊 Daily quota limit: 45 requests
+2025-10-08T10:14:02: ⏳ Queue system: Max 5 concurrent, 60s wait time
+2025-10-08T10:17:21: 🚀 Chatbot server is running on port 3001
+2025-10-08T10:17:21: 🌍 Environment: production
+2025-10-08T10:17:21: 🔧 Available endpoints:
+2025-10-08T10:17:21:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:17:21:    🤖 POST /webhook - Pure Gemini AI processing
+2025-10-08T10:17:21:    🧪 GET  /test - Server status
+2025-10-08T10:17:21:    💬 POST /test-message - Test message processing
+2025-10-08T10:17:21:    📤 POST /send-test-message - Test Facebook send
+2025-10-08T10:17:21:    ❤️  GET  /health - Health check
+2025-10-08T10:17:21:    📊 GET  /queue-status - Queue status details
+2025-10-08T10:17:21:    🚨 POST /queue-reset - Emergency queue reset
+2025-10-08T10:17:21: 🎯 User Journey Enhanced Chatbot Ready!
+2025-10-08T10:17:21: 📊 Daily quota limit: 45 requests
+2025-10-08T10:17:21: ⏳ Queue system: Max 5 concurrent, 60s wait time
+2025-10-08T10:37:32: ✅ Gemini Bot: AI initialized with gemini
+2025-10-08T10:37:32: 🚀 Gemini Bot running on port 3001
+2025-10-08T10:37:32: 🤖 AI Provider: gemini
+2025-10-08T10:38:00: ✅ Gemini Bot: AI initialized with gemini
+2025-10-08T10:38:00: 🚀 Gemini Bot running on port 3001
+2025-10-08T10:38:00: 🤖 AI Provider: gemini

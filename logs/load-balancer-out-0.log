@@ -1,0 +1,93 @@
+2025-10-08T09:56:48: 🏥 Health Checker started (Lazy Mode - only when needed)
+2025-10-08T09:56:48: 🏥 Health Checker in ON-DEMAND mode - no periodic checks
+2025-10-08T09:56:48: 🚀 Load Balancer started successfully!
+2025-10-08T09:56:48: 🌍 Running on port 3000
+2025-10-08T09:56:48: 🎯 Primary system: gemini
+2025-10-08T09:56:48: 🔄 Backup system: router_hug
+2025-10-08T09:56:48: ⏰ Recovery time: 12 hours
+2025-10-08T09:56:48: 📊 Available endpoints:
+2025-10-08T09:56:48:    ✅ GET  /webhook - Facebook verification
+2025-10-08T09:56:48:    🤖 POST /webhook - Route to active system
+2025-10-08T09:56:48:    📊 GET  /status - System status
+2025-10-08T09:56:48:    🏥 GET  /health - Health check
+2025-10-08T09:56:48:    🔄 POST /force-switch - Manual system switch
+2025-10-08T09:56:48: 🎉 Load Balancer is ready to handle requests!
+2025-10-08T09:57:02: 📨 Received webhook request
+2025-10-08T09:57:02: 🎯 Performing on-demand health check
+2025-10-08T09:57:02: 🔍 Performing health check...
+2025-10-08T09:57:02: ✅ gemini is healthy (133ms)
+2025-10-08T09:57:02: ✅ router_hug is healthy (20ms)
+2025-10-08T09:57:02: 📊 System Status: gemini | Gemini: healthy | Router: healthy
+2025-10-08T09:57:02: 📤 Routing request to Gemini
+2025-10-08T10:01:29: 🏥 Health Checker started (Lazy Mode - only when needed)
+2025-10-08T10:01:29: 🏥 Health Checker in ON-DEMAND mode - no periodic checks
+2025-10-08T10:01:29: 🚀 Load Balancer started successfully!
+2025-10-08T10:01:29: 🌍 Running on port 3000
+2025-10-08T10:01:29: 🎯 Primary system: gemini
+2025-10-08T10:01:29: 🔄 Backup system: router_hug
+2025-10-08T10:01:29: ⏰ Recovery time: 12 hours
+2025-10-08T10:01:29: 📊 Available endpoints:
+2025-10-08T10:01:29:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:01:29:    🤖 POST /webhook - Route to active system
+2025-10-08T10:01:29:    📊 GET  /status - System status
+2025-10-08T10:01:29:    🏥 GET  /health - Health check
+2025-10-08T10:01:29:    🔄 POST /force-switch - Manual system switch
+2025-10-08T10:01:29: 🎉 Load Balancer is ready to handle requests!
+2025-10-08T10:07:12: 🏥 Health Checker started (Lazy Mode - only when needed)
+2025-10-08T10:07:12: 🏥 Health Checker in ON-DEMAND mode - no periodic checks
+2025-10-08T10:07:12: 🚀 Load Balancer started successfully!
+2025-10-08T10:07:12: 🌍 Running on port 3000
+2025-10-08T10:07:12: 🎯 Primary system: gemini
+2025-10-08T10:07:12: 🔄 Backup system: router_hug
+2025-10-08T10:07:12: ⏰ Recovery time: 12 hours
+2025-10-08T10:07:12: 📊 Available endpoints:
+2025-10-08T10:07:12:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:07:12:    🤖 POST /webhook - Route to active system
+2025-10-08T10:07:12:    📊 GET  /status - System status
+2025-10-08T10:07:12:    🏥 GET  /health - Health check
+2025-10-08T10:07:12:    🔄 POST /force-switch - Manual system switch
+2025-10-08T10:07:12: 🎉 Load Balancer is ready to handle requests!
+2025-10-08T10:14:02: 🏥 Health Checker started (Lazy Mode - only when needed)
+2025-10-08T10:14:02: 🏥 Health Checker in ON-DEMAND mode - no periodic checks
+2025-10-08T10:14:02: 🚀 Load Balancer started successfully!
+2025-10-08T10:14:02: 🌍 Running on port 3000
+2025-10-08T10:14:02: 🎯 Primary system: gemini
+2025-10-08T10:14:02: 🔄 Backup system: router_hug
+2025-10-08T10:14:02: ⏰ Recovery time: 12 hours
+2025-10-08T10:14:02: 📊 Available endpoints:
+2025-10-08T10:14:02:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:14:02:    🤖 POST /webhook - Route to active system
+2025-10-08T10:14:02:    📊 GET  /status - System status
+2025-10-08T10:14:02:    🏥 GET  /health - Health check
+2025-10-08T10:14:02:    🔄 POST /force-switch - Manual system switch
+2025-10-08T10:14:02: 🎉 Load Balancer is ready to handle requests!
+2025-10-08T10:14:08: 🔍 Performing on-demand health check
+2025-10-08T10:17:20: 🏥 Health Checker started (Lazy Mode - only when needed)
+2025-10-08T10:17:20: 🏥 Health Checker in ON-DEMAND mode - no periodic checks
+2025-10-08T10:17:20: 🚀 Load Balancer started successfully!
+2025-10-08T10:17:20: 🌍 Running on port 3000
+2025-10-08T10:17:20: 🎯 Primary system: gemini
+2025-10-08T10:17:20: 🔄 Backup system: router_hug
+2025-10-08T10:17:20: ⏰ Recovery time: 12 hours
+2025-10-08T10:17:20: 📊 Available endpoints:
+2025-10-08T10:17:20:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:17:20:    🤖 POST /webhook - Route to active system
+2025-10-08T10:17:20:    📊 GET  /status - System status
+2025-10-08T10:17:20:    🏥 GET  /health - Health check
+2025-10-08T10:17:20:    🔄 POST /force-switch - Manual system switch
+2025-10-08T10:17:20: 🎉 Load Balancer is ready to handle requests!
+2025-10-08T10:17:27: 🔍 Performing on-demand health check
+2025-10-08T10:37:57: 🏥 Health Checker started (Lazy Mode - only when needed)
+2025-10-08T10:37:57: 🏥 Health Checker in ON-DEMAND mode - no periodic checks
+2025-10-08T10:37:57: 🚀 Load Balancer started successfully!
+2025-10-08T10:37:57: 🌍 Running on port 3000
+2025-10-08T10:37:57: 🎯 Primary system: gemini
+2025-10-08T10:37:57: 🔄 Backup system: router_hug
+2025-10-08T10:37:57: ⏰ Recovery time: 12 hours
+2025-10-08T10:37:57: 📊 Available endpoints:
+2025-10-08T10:37:57:    ✅ GET  /webhook - Facebook verification
+2025-10-08T10:37:57:    🤖 POST /webhook - Route to active system
+2025-10-08T10:37:57:    📊 GET  /status - System status
+2025-10-08T10:37:57:    🏥 GET  /health - Health check
+2025-10-08T10:37:57:    🔄 POST /force-switch - Manual system switch
+2025-10-08T10:37:57: 🎉 Load Balancer is ready to handle requests!

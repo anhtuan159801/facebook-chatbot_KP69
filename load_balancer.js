@@ -1,8 +1,14 @@
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
+const { createLogger } = require('./logger');
+const { ServiceCircuitBreaker } = require('./circuit-breaker');
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Initialize logging and circuit breaker
+const logger = createLogger('LoadBalancer');
+const circuitBreaker = new ServiceCircuitBreaker();
 
 // Note: Không import trực tiếp các module chatbot vì chúng chạy trên port khác nhau
 // Load Balancer sẽ route requests thông qua HTTP calls
@@ -100,43 +106,67 @@ class HealthChecker {
     }
 
     async checkSystemHealth(systemName) {
-        try {
-            const startTime = Date.now();
-            
-            // Gọi health check endpoint của từng hệ thống
-            let isHealthy = false;
-            const targetPort = systemName === 'gemini' ? 3001 : 3002;
-            
-            try {
-                const fetch = await import('node-fetch');
-                const response = await fetch.default(`http://localhost:${targetPort}/health`, {
-                    method: 'GET',
-                    timeout: 5000
-                });
-                isHealthy = response.ok;
-            } catch (fetchError) {
-                throw new Error(`Connection failed: ${fetchError.message}`);
-            }
-
-            const responseTime = Date.now() - startTime;
-            
-            if (isHealthy) {
-                systemStatus[systemName].status = 'healthy';
-                systemStatus[systemName].consecutiveFailures = 0;
-                systemStatus[systemName].lastError = null;
-                console.log(`✅ ${systemName} is healthy (${responseTime}ms)`);
-            } else {
-                throw new Error(`Health check failed for ${systemName}`);
-            }
-            
-        } catch (error) {
-            systemStatus[systemName].status = 'unhealthy';
-            systemStatus[systemName].consecutiveFailures++;
-            systemStatus[systemName].lastError = error.message;
-            console.log(`❌ ${systemName} is unhealthy: ${error.message}`);
-        }
+        const maxRetries = 3;
+        const retryDelay = 1000;
         
-        systemStatus[systemName].lastCheck = new Date();
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const startTime = Date.now();
+                
+                // Gọi health check endpoint của từng hệ thống
+                let isHealthy = false;
+                const targetPort = systemName === 'gemini' ? 3001 : 3002;
+                
+                try {
+                    const fetch = await import('node-fetch');
+                    const response = await fetch.default(`http://localhost:${targetPort}/health`, {
+                        method: 'GET',
+                        timeout: 10000, // Tăng timeout lên 10 giây
+                        headers: {
+                            'User-Agent': 'LoadBalancer/1.0',
+                            'Connection': 'keep-alive'
+                        }
+                    });
+                    isHealthy = response.ok;
+                } catch (fetchError) {
+                    if (attempt < maxRetries) {
+                        console.log(`⚠️ ${systemName} attempt ${attempt}/${maxRetries} failed: ${fetchError.message}`);
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                        continue;
+                    }
+                    console.log(`⚠️ ${systemName} connection failed: ${fetchError.message}`);
+                    throw new Error(`Connection failed: request to http://localhost:${targetPort}/health failed, reason: ${fetchError.message}`);
+                }
+
+                const responseTime = Date.now() - startTime;
+                
+                if (isHealthy) {
+                    systemStatus[systemName].status = 'healthy';
+                    systemStatus[systemName].consecutiveFailures = 0;
+                    systemStatus[systemName].lastError = null;
+                    console.log(`✅ ${systemName} is healthy (${responseTime}ms)`);
+                    systemStatus[systemName].lastCheck = new Date();
+                    return; // Thành công, thoát khỏi retry loop
+                } else {
+                    throw new Error(`Health check failed for ${systemName}`);
+                }
+                
+            } catch (error) {
+                if (attempt < maxRetries) {
+                    console.log(`⚠️ ${systemName} attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+                    await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    continue;
+                }
+                
+                // Tất cả attempts đều fail
+                systemStatus[systemName].status = 'unhealthy';
+                systemStatus[systemName].consecutiveFailures++;
+                systemStatus[systemName].lastError = error.message;
+                console.log(`❌ ${systemName} is unhealthy: ${error.message}`);
+                systemStatus[systemName].lastCheck = new Date();
+                return;
+            }
+        }
     }
 
     updateSystemStatus() {
@@ -264,49 +294,71 @@ async function routeRequest(req, res) {
 }
 
 async function routeToGemini(req, res) {
+    const breaker = circuitBreaker.getBreaker('gemini', {
+        threshold: 3,
+        timeout: 30000,
+        resetTimeout: 60000
+    });
+    
     try {
-        const fetch = await import('node-fetch');
-        const response = await fetch.default(`http://localhost:3001/webhook`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(req.body),
-            timeout: 30000
+        const result = await breaker.execute(async () => {
+            const fetch = await import('node-fetch');
+            const response = await fetch.default(`http://localhost:3001/webhook`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(req.body),
+                timeout: 30000
+            });
+            
+            if (response.ok) {
+                logger.info('Successfully routed to Gemini');
+                return true;
+            } else {
+                throw new Error(`Gemini responded with status: ${response.status}`);
+            }
         });
         
-        if (response.ok) {
-            res.status(200).send('EVENT_RECEIVED');
-            return true;
-        } else {
-            throw new Error(`Gemini responded with status: ${response.status}`);
-        }
+        res.status(200).send('EVENT_RECEIVED');
+        return result;
     } catch (error) {
-        console.error('❌ Error routing to Gemini:', error);
+        logger.error('Failed to route to Gemini', { error: error.message });
         throw error;
     }
 }
 
 async function routeToRouterHug(req, res) {
+    const breaker = circuitBreaker.getBreaker('router_hug', {
+        threshold: 3,
+        timeout: 30000,
+        resetTimeout: 60000
+    });
+    
     try {
-        const fetch = await import('node-fetch');
-        const response = await fetch.default(`http://localhost:3002/webhook`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(req.body),
-            timeout: 30000
+        const result = await breaker.execute(async () => {
+            const fetch = await import('node-fetch');
+            const response = await fetch.default(`http://localhost:3002/webhook`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(req.body),
+                timeout: 30000
+            });
+            
+            if (response.ok) {
+                logger.info('Successfully routed to Router Hug');
+                return true;
+            } else {
+                throw new Error(`Router Hug responded with status: ${response.status}`);
+            }
         });
         
-        if (response.ok) {
-            res.status(200).send('EVENT_RECEIVED');
-            return true;
-        } else {
-            throw new Error(`Router Hug responded with status: ${response.status}`);
-        }
+        res.status(200).send('EVENT_RECEIVED');
+        return result;
     } catch (error) {
-        console.error('❌ Error routing to Router Hug:', error);
+        logger.error('Failed to route to Router Hug', { error: error.message });
         throw error;
     }
 }
@@ -339,6 +391,8 @@ app.post('/webhook', async (req, res) => {
 
 // ==== ADMIN ENDPOINTS ====
 app.get('/status', (req, res) => {
+    const circuitBreakerStats = circuitBreaker.getStats();
+    
     res.json({
         loadBalancer: {
             currentSystem: systemStatus.currentSystem,
@@ -353,7 +407,8 @@ app.get('/status', (req, res) => {
                 consecutiveFailures: systemStatus.gemini.consecutiveFailures,
                 isRecovering: systemStatus.gemini.isRecovering,
                 nextRecoveryTime: systemStatus.gemini.nextRecoveryTime,
-                lastError: systemStatus.gemini.lastError
+                lastError: systemStatus.gemini.lastError,
+                circuitBreaker: circuitBreakerStats.gemini || null
             },
             router_hug: {
                 status: systemStatus.router_hug.status,
@@ -361,7 +416,8 @@ app.get('/status', (req, res) => {
                 consecutiveFailures: systemStatus.router_hug.consecutiveFailures,
                 isRecovering: systemStatus.router_hug.isRecovering,
                 nextRecoveryTime: systemStatus.router_hug.nextRecoveryTime,
-                lastError: systemStatus.router_hug.lastError
+                lastError: systemStatus.router_hug.lastError,
+                circuitBreaker: circuitBreakerStats.router_hug || null
             }
         },
         statistics: {
@@ -371,11 +427,17 @@ app.get('/status', (req, res) => {
             successRate: systemStatus.totalRequests > 0 ? 
                 ((systemStatus.successfulRequests / systemStatus.totalRequests) * 100).toFixed(2) + '%' : '0%'
         },
+        circuitBreakers: circuitBreakerStats,
         timestamp: new Date().toISOString()
     });
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+    // Force health check khi được gọi
+    console.log('🔍 Performing on-demand health check');
+    await healthChecker.checkSystemHealth('gemini');
+    await healthChecker.checkSystemHealth('router_hug');
+    
     const isHealthy = !systemStatus.maintenanceMode && 
                      (systemStatus.gemini.status === 'healthy' || systemStatus.router_hug.status === 'healthy');
     

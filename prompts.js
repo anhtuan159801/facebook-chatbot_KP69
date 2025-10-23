@@ -2,6 +2,8 @@
  * PROMPT SYSTEM FOR FACEBOOK CHATBOT - DETAILED & COMPREHENSIVE VERSION
  * Nhiệm vụ: Cung cấp thông tin chính xác, đáng tin cậy và hướng dẫn chuyên nghiệp về các dịch vụ công và thủ tục dân sinh.
  * Triết lý: An toàn người dùng là trên hết. Không bao giờ bịa đặt thông tin.
+ * 
+ * HƯỚNG DẪN: LƯU TOÀN BỘ NỘI DUNG FILE NÀY THÀNH MỘT FILE TÊN LÀ 'prompt-system.js'
  */
 
 // ==== SYSTEM PROMPT CHÍNH ====
@@ -190,40 +192,193 @@ const IMAGE_ANALYSIS_PROMPT = `Bạn là chuyên gia hỗ trợ dịch vụ côn
 // ==== PROMPT XỬ LÝ ÂM THANH ====
 const AUDIO_TRANSCRIPTION_PROMPT = `Chuyển đổi nội dung tin nhắn thoại thành văn bản. Chỉ trả về nội dung văn bản đã chuyển đổi, không thêm bất kỳ định dạng hay bình luận nào.`;
 
+// ==== CONTEXT ENHANCEMENT PROMPTS ====
+const CONTEXT_PROMPTS = {
+    VNeID: "\nNGỮ CẢNH: Người dùng đang làm việc với dịch vụ VNeID.",
+    ETAX: "\nNGỮ CẢNH: Người dùng đang làm việc với dịch vụ ETAX.",
+    VssID: "\nNGỮ CẢNH: Người dùng đang làm việc với dịch vụ VssID.",
+    PUBLIC_SERVICE: "\nNGỮ CẢNH: Người dùng đang làm việc với Cổng Dịch vụ công Quốc gia.",
+    WATER_SUPPLY: "\nNGỮ CẢNH: Người dùng đang hỏi về đăng ký cấp nước.",
+    ELECTRICITY: "\nNGỮ CẢNH: Người dùng đang hỏi về dịch vụ điện lực.",
+    PAYMENT: "\nNGỮ CẢNH: Người dùng đang hỏi về thanh toán hóa đơn."
+};
+
+// ==== ERROR HANDLING PROMPTS ====
+const ERROR_PROMPTS = {
+    SYSTEM_ERROR: "Xin lỗi, hiện tôi đang gặp sự cố kỹ thuật. Bạn vui lòng thử lại sau ít phút nhé! 🙏",
+    QUOTA_EXCEEDED: "Xin lỗi, hôm nay đã đạt giới hạn truy vấn. Vui lòng quay lại vào ngày mai! 🙏",
+    IMAGE_ERROR: "Xin lỗi, không thể xử lý hình ảnh này. Bạn có thể mô tả lỗi bằng văn bản để tôi hỗ trợ nhé! 📝",
+    AUDIO_ERROR: "Xin lỗi, không thể hiểu nội dung voice message. Bạn có thể thử lại hoặc gửi câu hỏi bằng văn bản nhé! 🎵",
+    MAINTENANCE: "🚨 Hệ thống đang bảo trì. Vui lòng thử lại sau ít phút. Xin lỗi vì sự bất tiện! 🙏",
+    INVALID_DISTRICT: "Xin lỗi, tôi không tìm thấy thông tin đơn vị cấp nước cho khu vực này. Bạn có thể cung cấp chính xác Quận/Huyện không? 📍",
+    WATER_INFO_INCOMPLETE: "Để hỗ trợ tốt về đăng ký nước máy, bạn vui lòng cho biết địa chỉ nhà (Quận/Huyện) nhé! 💧",
+    PAYMENT_INFO_INCOMPLETE: "Để hướng dẫn thanh toán hóa đơn, bạn vui lòng cho biết loại hóa đơn và phương thức thanh toán mong muốn nhé! 💰"
+};
+
+// ==== RATING RESPONSES ====
+const RATING_RESPONSES = {
+    HELPFUL: "Cảm ơn bạn! Rất vui khi giúp được bạn 😊",
+    NOT_HELPFUL: "Xin lỗi vì chưa hỗ trợ tốt. Bạn có thể cho biết vấn đề cụ thể để tôi cải thiện không? 🙏"
+};
+
+// ==== JOURNEY MESSAGES ====
+const JOURNEY_MESSAGES = {
+    START_GUIDE: "Tuyệt vời! 🎉 Bây giờ mình sẽ hướng dẫn bạn từng bước. Bắt đầu nào!",
+    DECLINE_GUIDE: "Hiểu rồi! 😊 Nếu cần hướng dẫn chi tiết sau, cứ hỏi mình nhé.",
+    STEP_COMPLETE: "Bạn đã hoàn thành bước này chưa? Nếu xong rồi, mình chuyển sang bước tiếp theo.",
+    JOURNEY_COMPLETE: "🎉 Chúc mừng! Bạn đã hoàn thành. Nếu cần hỗ trợ thêm, cứ hỏi mình! 😊",
+    NO_JOURNEY: "Bạn hiện không trong hành trình hướng dẫn nào.",
+    JOURNEY_ERROR: "Bạn gặp lỗi ở bước này? Mình sẽ hỗ trợ ngay. Vui lòng mô tả lỗi bạn gặp phải.",
+    JOURNEY_BACK: "Bạn đã quay lại bước trước. Mình sẽ tiếp tục hướng dẫn từ bước đó."
+};
+
+// ==== QUICK REPLY TEMPLATES ====
+const QUICK_REPLY_TEMPLATES = {
+    VNeID: [
+        "Tích hợp GPLX?",
+        "Tích hợp BHYT?",
+        "Khai báo y tế?"
+    ],
+    ETAX: [
+        "Khai thuế TNCN?",
+        "Hóa đơn điện tử?",
+        "Quyết toán thuế?"
+    ],
+    WATER_SUPPLY: [
+        "Chi phí lắp đặt?",
+        "Thời gian xử lý?",
+        "Đơn vị phụ trách?"
+    ],
+    ELECTRICITY: [
+        "Đăng ký điện mới?",
+        "Thanh toán online?",
+        "Báo sự cố điện?"
+    ],
+    PAYMENT: [
+        "Thanh toán online?",
+        "Tại cửa hàng?",
+        "Qua ngân hàng?"
+    ],
+    GENERAL: [
+        "VNeID là gì?",
+        "Đăng ký nước máy?",
+        "Thanh toán hóa đơn?"
+    ]
+};
+
 // ==== EXPORT TẤT CẢ PROMPTS VÀ UTILITIES ====
 module.exports = {
     SYSTEM_PROMPT,
     IMAGE_ANALYSIS_PROMPT,
     AUDIO_TRANSCRIPTION_PROMPT,
+    CONTEXT_PROMPTS,
+    ERROR_PROMPTS,
+    RATING_RESPONSES,
+    JOURNEY_MESSAGES,
+    QUICK_REPLY_TEMPLATES,
+    
+    // ===== HELPER FUNCTIONS =====
     
     /**
-     * Ví dụ hàm helper để làm sạch tin nhắn
+     * Lấy prompt đã được tăng cường với ngữ cảnh
+     * @param {string} basePrompt - Prompt cơ bản
+     * @param {string|null} context - Ngữ cảnh (VNeID, ETAX, VssID, etc.)
+     * @returns {string} Prompt đã được tăng cường
      */
-    cleanMessage: (message) => {
-        return message.trim().replace(/\s+/g, ' ');
+    getEnhancedPrompt: (basePrompt, context = null) => {
+        let enhanced = basePrompt;
+        if (context && CONTEXT_PROMPTS[context]) {
+            enhanced += CONTEXT_PROMPTS[context];
+        }
+        return enhanced;
     },
     
     /**
-     * Ví dụ hàm helper để phát hiện ngôn ngữ
+     * Lấy thông báo lỗi dựa trên loại lỗi
+     * @param {string} errorType - Loại lỗi
+     * @returns {string} Thông báo lỗi
+     */
+    getErrorMessage: (errorType) => {
+        return ERROR_PROMPTS[errorType] || ERROR_PROMPTS.SYSTEM_ERROR;
+    },
+    
+    /**
+     * Lấy phản hồi đánh giá
+     * @param {string} rating - Đánh giá (helpful/not_helpful)
+     * @returns {string} Phản hồi
+     */
+    getRatingResponse: (rating) => {
+        return rating === 'helpful' ? RATING_RESPONSES.HELPFUL : RATING_RESPONSES.NOT_HELPFUL;
+    },
+    
+    /**
+     * Lấy tin nhắn hành trình
+     * @param {string} messageType - Loại tin nhắn
+     * @returns {string} Tin nhắn
+     */
+    getJourneyMessage: (messageType) => {
+        return JOURNEY_MESSAGES[messageType] || '';
+    },
+    
+    /**
+     * Lấy quick replies dựa trên ngữ cảnh
+     * @param {string} context - Ngữ cảnh
+     * @returns {Array<string>} Danh sách quick replies
+     */
+    getQuickReplies: (context = 'GENERAL') => {
+        return QUICK_REPLY_TEMPLATES[context] || QUICK_REPLY_TEMPLATES.GENERAL;
+    },
+    
+    /**
+     * Phát hiện ngôn ngữ của tin nhắn
+     * @param {string} message - Tin nhắn người dùng
+     * @returns {string} Mã ngôn ngữ (vi, en, zh, ja, ko, fr, etc.)
      */
     detectLanguage: (message) => {
+        // Tiếng Việt
         if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(message)) {
             return 'vi';
         }
-        return 'en'; // Mặc định
+        // Tiếng Trung
+        if (/[\u4e00-\u9fff]/.test(message)) {
+            return 'zh';
+        }
+        // Tiếng Nhật
+        if (/[\u3040-\u309f\u30a0-\u30ff]/.test(message)) {
+            return 'ja';
+        }
+        // Tiếng Hàn
+        if (/[\uac00-\ud7af]/.test(message)) {
+            return 'ko';
+        }
+        // Mặc định tiếng Anh
+        return 'en';
+    },
+    
+    /**
+     * Làm sạch và chuẩn hóa tin nhắn người dùng
+     * @param {string} message - Tin nhắn gốc
+     * @returns {string} Tin nhắn đã làm sạch
+     */
+    cleanMessage: (message) => {
+        return message
+            .trim()
+            .replace(/\s+/g, ' ')
+            .replace(/[^\w\sàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ.,?!@\-]/gi, '');
+    },
+    
+    /**
+     * Ghi log hoạt động (để debug và monitoring)
+     * @param {string} action - Hành động
+     * @param {Object} data - Dữ liệu liên quan
+     */
+    logActivity: (action, data = {}) => {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] ${action}:`, JSON.stringify(data, null, 2));
     }
 };
 
 /**
- * GHI CHÚ SỬ DỤNG:
- * 
- * 1. Import module:
- *    const promptSystem = require('./prompt-system');
- * 
- * 2. Sử dụng SYSTEM_PROMPT cho AI:
- *    const prompt = promptSystem.SYSTEM_PROMPT;
- * 
- * 3. Prompt này hoạt động như một "bộ quy tắc ứng xử" toàn diện.
- *    AI sẽ hành xử dựa trên các giới hạn và kịch bản đã được định sẵn,
- *    đảm bảo tính an toàn, nhất quán và chuyên nghiệp.
+ * ===== KẾT THÚC FILE =====
+ * Đừng quên lưu lại file sau khi chỉnh sửa.
  */

@@ -130,7 +130,7 @@ NHIỆM VỤ CỐT LÕI:
 THÔNG TIN LIÊN HỆ BAN QUẢN LÝ KHU PHỐ 69:
 
 • Ông Hoàng Đăng Ngọc – Bí thư Chi bộ – 📞 0985.175.228
-• Ông Thân Văn Hiển – Khu Trưởng – 📞 0938.894.033
+• Ông Thân Văn Hiển – Trưởng Khu phố – 📞 0938.894.033
 • Ông Mai Đức Chiến – Trưởng Ban Mặt trận – 📞 0979.201.078
 • Bà Lục Kim Hằng – Trưởng Chi Hội Phụ nữ – 📞 0368.093.942
 • Ông Võ Hải Đăng – Bí thư Đoàn – 📞 0329.420.291

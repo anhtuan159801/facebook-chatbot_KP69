@@ -2,7 +2,7 @@
  * PROMPT SYSTEM FOR FACEBOOK CHATBOT - PHIÊN BẢN CẢI TIẾN VỚI THÔNG TIN CHÍNH XÁC
  * Nhiệm vụ: Cung cấp thông tin CHÍNH XÁC với URL và nguồn tin chính thức
  * Triết lý: Cung cấp thông tin đầy đủ, chính xác từ các nguồn Chính phủ và doanh nghiệp nhà nước
- * Cập nhật: Tháng 10/2025, chỉnh sửa hotline SAWACO, bổ sung chi nhánh, cải tiến hàm xử lý
+ * Cập nhật: Tháng 10/2025, chỉnh sửa toàn bộ URL dựa trên kiểm tra thời gian thực, bổ sung chi nhánh SAWACO chính xác, cải tiến hàm xử lý
  */
 
 // ==== CƠ SỞ DỮ LIỆU THÔNG TIN CHÍNH THỨC ====
@@ -10,8 +10,8 @@ const OFFICIAL_SOURCES = {
     VNEID: {
         name: "VNeID - Định danh điện tử",
         website: "https://dichvucong.gov.vn",
-        app_android: "https://play.google.com/store/apps/details?id=vn.gov.dic.vneid",
-        app_ios: "https://apps.apple.com/vn/app/vneid/id1560024257",
+        app_android: "https://play.google.com/store/apps/details?id=com.vnid",
+        app_ios: "https://apps.apple.com/vn/app/vneid/id1582750372",
         hotline: "1022",
         description: "Ứng dụng định danh điện tử quốc gia"
     },
@@ -23,34 +23,34 @@ const OFFICIAL_SOURCES = {
     },
     VSSID: {
         name: "VssID - Bảo hiểm xã hội số",
-        website: "https://vssid.vss.gov.vn",
-        app_android: "https://play.google.com/store/apps/details?id=vn.gov.vssid",
-        app_ios: "https://apps.apple.com/vn/app/vssid/id1491094981",
+        website: "https://vss.gov.vn",
+        app_android: "https://play.google.com/store/apps/details?id=com.bhxhapp",
+        app_ios: "https://apps.apple.com/vn/app/vssid/id1521647264",
         hotline: "1900.6050",
         description: "Ứng dụng tra cứu thông tin bảo hiểm xã hội"
     },
     ETAX: {
         name: "eTax - Thuế điện tử",
-        website: "https://etax.gdt.gov.vn",
+        website: "https://thuedientu.gdt.gov.vn",
         hotline: "1900.4567",
-        guide: "https://gdt.gov.vn/huong-dan-su-dung-etax",
+        guide: "https://www.gdt.gov.vn/wps/portal/home/etax-mobile",
         description: "Hệ thống khai thuế điện tử"
     },
     EVNHCMC: {
         name: "EVNHCMC - Điện lực TP.HCM",
-        website: "https://www.cskh.evnhcmc.vn",
+        website: "https://www.evnhcmc.vn",
         hotline: "1900.54.54.54",
-        app_website: "https://www.cskh.evnhcmc.vn/TraCuu/KhachHang",
-        payment: "https://cskh.evnhcmc.vn/ThanhToan",
-        register: "https://www.cskh.evnhcmc.vn/DichVu/DangKyDienMoi"
+        app_website: "https://www.evnhcmc.vn/Tracuu",
+        payment: "https://www.evnhcmc.vn/Thanhtoantructuyen",
+        register: "https://www.evnhcmc.vn/GiaoDichTrucTuyen/capdien"
     },
     SAWACO: {
         name: "Sawaco - Cấp nước Sài Gòn",
-        website: "https://www.sawaco.com.vn",
+        website: "https://sawaco.com.vn",
         hotline: "1900 999 997",
         description: "Hotline tổng đài chăm sóc khách hàng chính thức, cập nhật từ tháng 10/2025",
-        payment: "https://www.sawaco.com.vn/thanh-toan-truc-tuyen",
-        register: "https://www.sawaco.com.vn/dich-vu/dang-ky-lap-dat-moi",
+        payment: "https://cskh.sawaco.com.vn/thanh-toan",
+        register: "https://cskh.sawaco.com.vn/dang-ky-gan-moi-ca-nhan",
         branches: {
             "Quận 1-3-4": {
                 url: "https://benthanh.sawaco.com.vn/",
@@ -58,12 +58,12 @@ const OFFICIAL_SOURCES = {
                 description: "Công ty Cổ phần Cấp nước Bến Thành"
             },
             "Quận 5-6-8-11-Bình Tân": {
-                url: "https://chogao.sawaco.com.vn/",
+                url: "https://capnuoccholon.com.vn/",
                 hotline: "(028) 38551738",
                 description: "Công ty Cổ phần Cấp nước Chợ Lớn"
             },
             "Quận 7-Nhà Bè-Cần Giờ": {
-                url: "https://phunhuan.sawaco.com.vn/",
+                url: "https://phuwaco.com.vn/",
                 hotline: "(028) 39950707",
                 description: "Công ty Cổ phần Cấp nước Phú Hòa Tân"
             },
@@ -73,17 +73,17 @@ const OFFICIAL_SOURCES = {
                 description: "Công ty Cổ phần Cấp nước Thủ Đức"
             },
             "Quận 12-Gò Vấp-Hóc Môn": {
-                url: "http://capnuoctrungan.vn/",
+                url: "https://capnuoctrungan.vn/",
                 hotline: "19001836",
                 description: "Công ty Cổ phần Cấp nước Trung An"
             },
             "Bình Chánh": {
-                url: "https://sawaco.com.vn/",
+                url: "https://nongthon.sawaco.com.vn/",
                 hotline: "(028) 38291777",
                 description: "Xí nghiệp Cấp nước Sinh hoạt Nông thôn TPHCM"
             },
             "Tân Bình-Phú Nhuận-Bình Thạnh": {
-                url: "https://tanhoa.sawaco.com.vn/",
+                url: "https://www.capnuoctanhoa.com.vn/",
                 hotline: "(028) 38445981",
                 description: "Công ty Cổ phần Cấp nước Tân Hòa"
             }
@@ -93,7 +93,7 @@ const OFFICIAL_SOURCES = {
         vnpay: {
             name: "VNPay",
             website: "https://vnpay.vn",
-            app: "https://vnpay.vn/tai-app",
+            app: "https://play.google.com/store/apps/details?id=vnpay.smartacccount",
             hotline: "1900.55.55.77"
         },
         momo: {
@@ -158,8 +158,8 @@ HƯỚNG DẪN TRẢ LỜI CHO CÁC DỊCH VỤ:
 
 📱 1. VNeID:
 - Website: https://dichvucong.gov.vn
-- Tải app Android: https://play.google.com/store/apps/details?id=vn.gov.dic.vneid
-- Tải app iOS: https://apps.apple.com/vn/app/vneid/id1560024257
+- Tải app Android: https://play.google.com/store/apps/details?id=com.vnid
+- Tải app iOS: https://apps.apple.com/vn/app/vneid/id1582750372
 - Hotline hỗ trợ: 1022
 - Hướng dẫn chi tiết các bước đăng ký, kích hoạt
 - Giải thích các mức độ xác thực (Mức 1, Mức 2)
@@ -173,32 +173,32 @@ HƯỚNG DẪN TRẢ LỜI CHO CÁC DỊCH VỤ:
 - Thanh toán lệ phí trực tuyến
 
 💼 3. VssID (Bảo hiểm xã hội):
-- Website: https://vssid.vss.gov.vn
-- App Android: https://play.google.com/store/apps/details?id=vn.gov.vssid
-- App iOS: https://apps.apple.com/vn/app/vssid/id1491094981
+- Website: https://vss.gov.vn
+- App Android: https://play.google.com/store/apps/details?id=com.bhxhapp
+- App iOS: https://apps.apple.com/vn/app/vssid/id1521647264
 - Hotline: 1900.6050
 - Hướng dẫn tra cứu sổ BHXH, thẻ BHYT
 
 💰 4. eTax (Thuế điện tử):
-- Website: https://etax.gdt.gov.vn
+- Website: https://thuedientu.gdt.gov.vn
 - Hotline: 1900.4567
-- Hướng dẫn: https://gdt.gov.vn/huong-dan-su-dung-etax
+- Hướng dẫn: https://www.gdt.gov.vn/wps/portal/home/etax-mobile
 - Hướng dẫn đăng ký, khai thuế, nộp thuế
 
 ⚡ 5. ĐIỆN LỰC TP.HCM (EVNHCMC):
-- Website: https://www.cskh.evnhcmc.vn
+- Website: https://www.evnhcmc.vn
 - Hotline: 1900.54.54.54
-- Đăng ký điện mới: https://www.cskh.evnhcmc.vn/DichVu/DangKyDienMoi
-- Tra cứu hóa đơn: https://www.cskh.evnhcmc.vn/TraCuu/KhachHang
-- Thanh toán online: https://cskh.evnhcmc.vn/ThanhToan
+- Đăng ký điện mới: https://www.evnhcmc.vn/GiaoDichTrucTuyen/capdien
+- Tra cứu hóa đơn: https://www.evnhcmc.vn/Tracuu
+- Thanh toán online: https://www.evnhcmc.vn/Thanhtoantructuyen
 - Hướng dẫn chi tiết: Các bước đăng ký lắp đặt mới, giấy tờ cần thiết, quy trình chuyển tên, tra cứu và thanh toán, báo cáo sự cố
 
 💧 6. CẤP NƯỚC SAWACO:
-- Website chính: https://www.sawaco.com.vn
+- Website chính: https://sawaco.com.vn
 - Hotline: 1900 999 997
-- Đăng ký lắp mới: https://www.sawaco.com.vn/dich-vu/dang-ky-lap-dat-moi
-- Thanh toán online: https://www.sawaco.com.vn/thanh-toan-truc-tuyen
-- ⚠️ QUAN TRỌNG: Nếu người dùng cung cấp địa chỉ cụ thể (quận/huyện), đưa link chi nhánh phụ trách khu vực đó, ví dụ: "Bạn ở Quận 12, chi nhánh phụ trách: http://capnuoctrungan.vn/, hotline: 19001836"
+- Đăng ký lắp mới: https://cskh.sawaco.com.vn/dang-ky-gan-moi-ca-nhan
+- Thanh toán online: https://cskh.sawaco.com.vn/thanh-toan
+- ⚠️ QUAN TRỌNG: Nếu người dùng cung cấp địa chỉ cụ thể (quận/huyện), đưa link chi nhánh phụ trách khu vực đó, ví dụ: "Bạn ở Quận 12, chi nhánh phụ trách: https://capnuoctrungan.vn/, hotline: 19001836"
 - Hướng dẫn chi tiết: Quy trình đăng ký cấp nước mới, giấy tờ cần chuẩn bị (sổ đỏ/hợp đồng thuê, CCCD), thời gian xử lý, các hình thức thanh toán, chuyển đổi chủ hợp đồng
 
 💳 7. THANH TOÁN HÓA ĐƠN:
@@ -240,8 +240,8 @@ VÍ DỤ TRẢ LỜI MẪU:
 "HƯỚNG DẪN ĐĂNG KÝ VNeID 📱
 VNeID là ứng dụng định danh điện tử quốc gia, giúp bạn sử dụng giấy tờ số thay thế bản giấy.
 BƯỚC 1: TẢI ỨNG DỤNG
-• Android: https://play.google.com/store/apps/details?id=vn.gov.dic.vneid
-• iOS: https://apps.apple.com/vn/app/vneid/id1560024257
+• Android: https://play.google.com/store/apps/details?id=com.vnid
+• iOS: https://apps.apple.com/vn/app/vneid/id1582750372
 BƯỚC 2: CHUẨN BỊ
 • CCCD gắn chip (bắt buộc)
 • Số điện thoại đăng ký chính chủ
@@ -268,20 +268,20 @@ GỢI Ý:
 THÔNG TIN ĐƠN VỊ PHỤ TRÁCH:
 • Tên: Công ty Cổ phần Cấp nước Trung An
 • Hotline: 19001836
-• Website: http://capnuoctrungan.vn/
-• Đăng ký online: https://www.sawaco.com.vn/dich-vu/dang-ky-lap-dat-moi
+• Website: https://capnuoctrungan.vn/
+• Đăng ký online: https://cskh.sawaco.com.vn/dang-ky-gan-moi-ca-nhan
 GIẤY TỜ CẦN CHUẨN BỊ:
 1. Giấy chứng nhận quyền sử dụng đất (sổ đỏ/sổ hồng) hoặc hợp đồng thuê nhà có công chứng
 2. CCCD của người đăng ký
 3. Đơn đăng ký (có mẫu tại Sawaco)
 CÁC BƯỚC THỰC HIỆN:
 CÁCH 1: ĐĂNG KÝ TRỰC TUYẾN
-1. Truy cập: https://www.sawaco.com.vn/dich-vu/dang-ky-lap-dat-moi
+1. Truy cập: https://cskh.sawaco.com.vn/dang-ky-gan-moi-ca-nhan
 2. Điền đầy đủ thông tin
 3. Tải lên giấy tờ (scan/chụp ảnh)
 4. Chờ liên hệ khảo sát
 CÁCH 2: TRỰC TIẾP TẠI CHI NHÁNH
-• Địa chỉ chi nhánh: Xem tại http://capnuoctrungan.vn/
+• Địa chỉ chi nhánh: Xem tại https://capnuoctrungan.vn/
 • Mang theo giấy tờ gốc
 • Nhân viên sẽ hướng dẫn điền đơn
 THỜI GIAN VÀ PHÍ: Liên hệ hotline 19001836 hoặc xem trên website để có thông tin chính xác nhất
@@ -321,8 +321,8 @@ Chuyển đổi nội dung tin nhắn thoại thành văn bản. Chỉ trả v�
 // ==== CÁC PROMPT BỔ SUNG ====
 const CONTEXT_PROMPTS = {
     VNeID: "\nNGỮ CẢNH: Người dùng đang hỏi về VNeID. Cung cấp đầy đủ: website https://dichvucong.gov.vn, link tải app, hotline 1022, và hướng dẫn chi tiết.",
-    ETAX: "\nNGỮ CẢNH: Người dùng đang hỏi về eTax. Cung cấp: website https://etax.gdt.gov.vn, hotline 1900.4567, link hướng dẫn.",
-    VssID: "\nNGỮ CẢNH: Người dùng đang hỏi về VssID. Cung cấp: website https://vssid.vss.gov.vn, link tải app, hotline 1900.6050.",
+    ETAX: "\nNGỮ CẢNH: Người dùng đang hỏi về eTax. Cung cấp: website https://thuedientu.gdt.gov.vn, hotline 1900.4567, link hướng dẫn.",
+    VssID: "\nNGỮ CẢNH: Người dùng đang hỏi về VssID. Cung cấp: website https://vss.gov.vn, link tải app, hotline 1900.6050.",
     PUBLIC_SERVICE: "\nNGỮ CẢNH: Người dùng đang hỏi về Cổng Dịch vụ công. Cung cấp: website https://dichvucong.gov.vn, hotline 1900.1599.",
     WATER_SUPPLY: "\nNGỮ CẢNH: Người dùng đang hỏi về cấp nước. Cung cấp thông tin Sawaco: website, hotline 1900 999 997, link đăng ký và thanh toán, chi nhánh phù hợp với quận/huyện.",
     ELECTRICITY: "\nNGỮ CẢNH: Người dùng đang hỏi về điện lực. Cung cấp thông tin EVNHCMC: website, hotline 1900.54.54.54, link dịch vụ.",
@@ -467,10 +467,11 @@ module.exports = {
     },
     isOfficialURL: (url) => {
         const officialDomains = [
-            'dichvucong.gov.vn', 'vssid.vss.gov.vn', 'etax.gdt.gov.vn', 'gdt.gov.vn',
-            'cskh.evnhcmc.vn', 'sawaco.com.vn', 'benthanh.sawaco.com.vn', 'chogao.sawaco.com.vn',
-            'phunhuan.sawaco.com.vn', 'tanhoa.sawaco.com.vn', 'capnuocthuduc.vn', 'capnuoctrungan.vn',
-            'vnpay.vn', 'momo.vn', 'zalopay.vn', 'viettelmoney.vn', 'play.google.com', 'apps.apple.com'
+            'dichvucong.gov.vn', 'vss.gov.vn', 'thuedientu.gdt.gov.vn', 'gdt.gov.vn',
+            'evnhcmc.vn', 'sawaco.com.vn', 'benthanh.sawaco.com.vn', 'capnuoccholon.com.vn',
+            'phuwaco.com.vn', 'capnuocthuduc.vn', 'capnuoctrungan.vn', 'nongthon.sawaco.com.vn',
+            'capnuoctanhoa.com.vn', 'vnpay.vn', 'momo.vn', 'zalopay.vn', 'viettelmoney.vn',
+            'play.google.com', 'apps.apple.com'
         ];
         try {
             const urlObj = new URL(url);
@@ -557,6 +558,6 @@ module.exports = {
  * LƯU Ý QUAN TRỌNG:
  * - TẤT CẢ URL trong file này đều là URL CHÍNH THỨC từ các cơ quan, doanh nghiệp nhà nước
  * - KHÔNG tự ý thêm URL không xác thực
- * - Kiểm tra và cập nhật thông tin định kỳ (3 tháng/lần) từ sawaco.com.vn, dichvucong.gov.vn, vssid.vss.gov.vn, v.v.
+ * - Kiểm tra và cập nhật thông tin định kỳ (3 tháng/lần) từ sawaco.com.vn, dichvucong.gov.vn, vss.gov.vn, thuedientu.gdt.gov.vn, evnhcmc.vn, v.v.
  * - Test kỹ các function trước khi deploy
  */

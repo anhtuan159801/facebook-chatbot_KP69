@@ -58,8 +58,8 @@ Hệ thống có khả năng **tự động failover** và **auto-recovery** đ�
 
 ```bash
 # Clone repository
-git clone https://github.com/anhtuan159801/facebook-chatbot.git
-cd facebook-chatbot
+git clone https://github.com/anhtuan159801/facebook-chatbot_KP69.git
+cd facebook-chatbot_KP69
 
 # Cài đặt dependencies
 npm install
@@ -283,7 +283,7 @@ curl -X POST http://localhost:3000/force-switch \
   -d '{"system": "router_hug", "adminKey": "your_admin_key"}'
 ```
 
-## 🚧 Deployment
+## 🚀 Deployment
 
 ### Render.com
 
@@ -296,6 +296,201 @@ node start_system.js start
 ```
 
 **Environment Variables**: Cấu hình tất cả biến trong `.env`
+
+### Koyeb (Recommended)
+
+#### A. Deploy via Koyeb Dashboard
+
+1. **Tạo tài khoản Koyeb**
+   - Truy cập [https://www.koyeb.com](https://www.koyeb.com)
+   - Đăng ký tài khoản miễn phí (yêu cầu email xác minh)
+   - Có thể dùng GitHub/GitLab để đăng ký nhanh chóng
+
+2. **Tạo Application mới**
+   - Nhấp vào "Create App"
+   - Chọn "GitHub" hoặc "Git" làm nguồn code
+   - Kết nối với repository (anhtuan159801/facebook-chatbot_KP69)
+   - Chọn branch `main`
+
+3. **Cấu hình Application**
+   - **Service Type**: Web Service
+   - **Runtime**: Node.js
+   - **Build Command**: `npm install`
+   - **Run Command**: `node start_system.js start`
+   - **Ports**: 3000:tcp (Load Balancer)
+   - **Environment Variables**: Thêm tất cả biến từ `.env`
+
+4. **Cấu hình Environment Variables trên Koyeb**
+   ```
+   DB_HOST=your_postgresql_host
+   DB_PORT=5432
+   DB_USER=your_db_username
+   DB_PASSWORD=your_db_password
+   DB_NAME=your_database_name
+   VERIFY_TOKEN=your_custom_verify_token
+   PAGE_ACCESS_TOKEN=your_facebook_page_access_token
+   GEMINI_API_KEY=your_gemini_api_key
+   OPENROUTER_API_KEY=your_openrouter_api_key
+   HUGGINGFACE_API_KEY=your_huggingface_api_key
+   ADMIN_KEY=your_admin_key
+   YOUR_SITE_URL=https://your-app-name-koyeb.app
+   YOUR_SITE_NAME=YourBotName
+   PORT=3000
+   NODE_ENV=production
+   ```
+
+5. **Cấu hình Domain (Tùy chọn)**
+   - Mua domain tại Namecheap, GoDaddy, etc.
+   - Trong Koyeb dashboard, vào "Domains"
+   - Thêm domain tùy chỉnh
+   - Cập nhật DNS records (CNAME hoặc A record)
+
+6. **Deploy Application**
+   - Nhấp "Create App"
+   - Koyeb sẽ tự động build và deploy
+   - Xem logs trong "Logs" tab
+   - Sau khi deploy thành công, bạn sẽ có URL: `https://your-app-name-koyeb.app`
+
+#### B. Deploy bằng Koyeb CLI
+
+1. **Cài đặt Koyeb CLI**
+   ```bash
+   # Tải CLI từ GitHub releases hoặc dùng npm
+   npm install -g @koyeb/cli
+
+   # Hoặc tải từ trang chủ Koyeb
+   curl -L https://koyeb-cli.netlify.app/install.sh | sh
+   ```
+
+2. **Login vào Koyeb**
+   ```bash
+   koyeb login
+   ```
+
+3. **Tạo Application từ repository**
+   ```bash
+   # Tạo ứng dụng mới
+   koyeb app init facebook-chatbot_KP69 --type web
+   ```
+
+4. **Cấu hình Application**
+   ```bash
+   # Cấu hình build và run
+   koyeb service create facebook-chatbot_KP69 \
+     --app facebook-chatbot_KP69 \
+     --git github.com/anhtuan159801/facebook-chatbot_KP69.git \
+     --build-cmd "npm install" \
+     --run-cmd "node start_system.js start" \
+     --ports "3000:http" \
+     --env-file .env
+   ```
+
+5. **Deploy Application**
+   ```bash
+   koyeb deploy
+   ```
+
+#### C. Cấu hình nâng cao trên Koyeb
+
+1. **Tự động deploy khi push**
+   - Trong dashboard, vào "Deployments"
+   - Kích hoạt "Auto Deploy"
+   - Chọn branch muốn auto deploy (thường là `main`)
+
+2. **Cấu hình Health Check**
+   - Path: `/health`
+   - Protocol: HTTP
+   - Port: 3000
+   - Success codes: 200
+
+3. **Scaling Configuration**
+   - Min instances: 1 (để đảm bảo uptime)
+   - Max instances: 2 hoặc 3 (tùy theo lưu lượng)
+   - Auto scaling dựa trên CPU/Memory
+
+4. **Database Integration**
+   - Koyeb hỗ trợ kết nối với PostgreSQL bên ngoài
+   - Hoặc dùng dịch vụ PostgreSQL của bên thứ 3 (Neon, Supabase, etc.)
+   - Cấu hình trong `.env` như bình thường
+
+5. **SSL/HTTPS**
+   - Koyeb tự động cấp SSL miễn phí
+   - Redirect HTTP sang HTTPS tự động
+   - Hỗ trợ Custom Domain SSL
+
+#### D. Quản lý sau khi deploy
+
+1. **Xem logs**
+   ```bash
+   # Trong dashboard
+   Koyeb Dashboard > App > Logs
+
+   # CLI
+   koyeb logs
+   ```
+
+2. **Restart Application**
+   ```bash
+   # Dashboard: Actions > Restart
+   # CLI
+   koyeb service redeploy facebook-chatbot_KP69
+   ```
+
+3. **Cập nhật Environment Variables**
+   ```bash
+   # CLI
+   koyeb service update facebook-chatbot_KP69 --env NEW_VAR=value
+   ```
+
+4. **Rollback version**
+   ```bash
+   # CLI
+   koyeb deployment rollback <deployment-id>
+   ```
+
+#### E. Troubleshooting Koyeb Deployment
+
+1. **Application không start được**
+   - Kiểm tra logs: `koyeb logs`
+   - Đảm bảo PORT=3000 (Koyeb sẽ tự động set PORT)
+   - Kiểm tra environment variables
+
+2. **Webhook không hoạt động**
+   - Đảm bảo URL có HTTPS
+   - Kiểm tra Facebook App domain trong Settings
+   - Verify token phải giống nhau
+
+3. **Database connection timeout**
+   - Đảm bảo database cho phép kết nối từ Koyeb (IP whitelisting)
+   - Kiểm tra thông tin kết nối
+   - Có thể cần cấu hình SSL cho database
+
+4. **Performance issues**
+   - Kiểm tra instance size
+   - Có thể nâng cấp từ Free/Paid plan
+   - Cấu hình scaling phù hợp
+
+#### F. Best Practices for Koyeb
+
+1. **Security**
+   - Không hardcode API keys trong code
+   - Dùng Koyeb Secrets cho sensitive data
+   - Cấu hình ADMIN_KEY cho các endpoint quản trị
+
+2. **Monitoring**
+   - Thiết lập health check endpoint (`/health`)
+   - Theo dõi logs thường xuyên
+   - Cấu hình alert nếu cần
+
+3. **Cost Optimization**
+   - Dùng Free tier hợp lý
+   - Cấu hình auto-scaling
+   - Theo dõi usage metrics
+
+4. **Backup & Recovery**
+   - Cấu hình database backup
+   - Version control trên Git
+   - Testing trước khi deploy production
 
 ### Docker
 
@@ -461,12 +656,12 @@ MIT License - xem file [LICENSE](LICENSE) để biết thêm chi tiết.
 
 * 📧 Email: anhtuan15082001@gmail.com
 * 💬 Zalo: 0778649573 - Mr. Tuan
-* 🐛 Issues: [GitHub Issues](https://github.com/anhtuan159801/facebook-chatbot/issues)
-* 📖 Documentation: [Wiki](https://github.com/anhtuan159801/facebook-chatbot/wiki)
+* 🐛 Issues: [GitHub Issues](https://github.com/anhtuan159801/facebook-chatbot_KP69/issues)
+* 📖 Documentation: [Wiki](https://github.com/anhtuan159801/facebook-chatbot_KP69/wiki)
 
 ## 🤖 RAG System Setup (New Feature)
 
-The chatbot now includes a Retrieval-Augmented Generation system for more accurate responses. To use this feature:
+The chatbot now includes a Retrieval-Augmented Generation system for more accurate responses using official Vietnamese government documents. To use this feature:
 
 ### Supabase Configuration Required
 1. Create a free Supabase account at [supabase.com](https://supabase.com)
@@ -479,12 +674,65 @@ The chatbot now includes a Retrieval-Augmented Generation system for more accura
    ```
 5. Run the schema in `docs/supabase-knowledge-schema.sql` in your Supabase SQL Editor
 
-After setup, run:
-```bash
-npm run crawl:once
-```
+### Using the Knowledge Base
+The system has already downloaded thousands of official Vietnamese administrative procedures from government ministries. You can:
+
+1. **Import all knowledge** from downloaded documents:
+   ```bash
+   npm run import:knowledge
+   ```
+   This will process all documents in the `Knowlegd-rag/downloads_ministries` folder and store them in your Supabase database.
+
+2. **Populate sample knowledge** (for testing):
+   ```bash
+   npm run populate:knowledge
+   ```
+
+3. **Refresh knowledge base**:
+   ```bash
+   npm run refresh:knowledge
+   ```
+
+4. **Crawl new documents** from government websites:
+   ```bash
+   npm run crawl:once
+   ```
+
+### Koyeb Deployment with RAG System
+When deploying to Koyeb with RAG functionality:
+
+1. **Set up Supabase** and get your URL and Anon Key
+2. **Configure environment variables** in Koyeb:
+   - SUPABASE_URL=https://your-project.supabase.co
+   - SUPABASE_ANON_KEY=your_supabase_anon_key
+   - ALL other environment variables as mentioned in the Koyeb section
+
+3. **Database schema**:
+   - Make sure to run the SQL schema in `docs/supabase-knowledge-schema.sql` in your Supabase project
+
+4. **Import knowledge after deployment**:
+   - The system has already downloaded thousands of official Vietnamese government documents in the `Knowlegd-rag/downloads_ministries` folder
+   - After deployment, you can import these documents using: `npm run import-knowledge-rag`
+   - This will process all documents and store them in your Supabase database for RAG functionality
+   - You can also run this periodically to keep your knowledge base up-to-date
+
+5. **For production use**, you should import the knowledge base before the system goes live:
+   ```bash
+   node scripts/import-knowledge-rag.js
+   ```
+
+6. **Automatic knowledge updates (optional)**:
+   - You can set up a cron job or scheduled task to run `npm run import-knowledge-rag` periodically
+   - This will keep your knowledge base updated with the latest government procedures
+   - You can also run `npm run crawl:once` to download new documents from government websites
 
 For complete setup instructions, see `docs/RAG_SYSTEM.md`.
+
+### Available Scripts for Knowledge Management
+- `npm run populate:knowledge` - Add sample knowledge to database
+- `npm run import-knowledge-rag` - Import knowledge from downloaded documents
+- `npm run crawl:once` - Crawl and download new documents from government websites
+- `npm run upload:doc` - Upload custom documents to knowledge base
 
 ## 🎯 Roadmap
 

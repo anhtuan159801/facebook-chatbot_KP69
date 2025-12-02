@@ -1,8 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
-const { createLogger } = require('./logger');
-const { ServiceCircuitBreaker } = require('./circuit-breaker');
+const { createLogger } = require('../utils/logger');
+const { ServiceCircuitBreaker } = require('../utils/circuit-breaker');
 const app = express();
 const port = process.env.PORT || 3000;
 

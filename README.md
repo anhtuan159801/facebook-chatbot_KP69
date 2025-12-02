@@ -19,6 +19,13 @@ Hệ thống có khả năng **tự động failover** và **auto-recovery** đ�
 * ⚡ **Auto Recovery**: Tự động thử lại hệ thống chính sau 12 giờ
 * 🛡️ **Health Monitoring**: Kiểm tra sức khỏe hệ thống mỗi 30 giây
 * 📊 **Queue Management**: Quản lý hàng chờ với giới hạn 5 request đồng thời
+* 🤖 **RAG System**: Hệ thống thông tin chính xác từ các nguồn chính thức
+* 🕸️ **Web Crawling**: Tự động cập nhật thông tin từ các website chính phủ
+* 📝 **Form Links**: Cung cấp trực tiếp link các biểu mẫu chính thức
+* 📄 **Document Processing**: Tự động xử lý và trích xuất nội dung từ file PDF/Word
+* 💬 **Chat History**: Lưu trữ lịch sử trò chuyện chi tiết với phân tích thông minh
+* 📊 **Conversation Analytics**: Phân tích hiệu suất và mức độ hài lòng của người dùng
+* 🧠 **Knowledge Management**: Tự động tạo và quản lý kiến thức thông minh
 
 ## 🏗️ Kiến Trúc Hệ Thống
 
@@ -456,6 +463,28 @@ MIT License - xem file [LICENSE](LICENSE) để biết thêm chi tiết.
 * 💬 Zalo: 0778649573 - Mr. Tuan
 * 🐛 Issues: [GitHub Issues](https://github.com/anhtuan159801/facebook-chatbot/issues)
 * 📖 Documentation: [Wiki](https://github.com/anhtuan159801/facebook-chatbot/wiki)
+
+## 🤖 RAG System Setup (New Feature)
+
+The chatbot now includes a Retrieval-Augmented Generation system for more accurate responses. To use this feature:
+
+### Supabase Configuration Required
+1. Create a free Supabase account at [supabase.com](https://supabase.com)
+2. Create a new project
+3. Enable the `vector` extension in your database
+4. Add your credentials to `.env`:
+   ```
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+5. Run the schema in `docs/supabase-knowledge-schema.sql` in your Supabase SQL Editor
+
+After setup, run:
+```bash
+npm run crawl:once
+```
+
+For complete setup instructions, see `docs/RAG_SYSTEM.md`.
 
 ## 🎯 Roadmap
 

@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'load-balancer',
-      script: 'load_balancer.js',
+      script: 'src/core/load-balancer/load_balancer.js',
       port: 3000,
       env: {
         NODE_ENV: 'production',
@@ -23,7 +23,7 @@ module.exports = {
     },
     {
       name: 'gemini-bot',
-      script: 'gemini.js',
+      script: 'src/core/services/gemini/gemini.js',
       port: 3001,
       env: {
         NODE_ENV: 'production',
@@ -44,7 +44,7 @@ module.exports = {
     },
     {
       name: 'router-hug-bot',
-      script: 'router_hug.js',
+      script: 'src/core/services/router-hug/router_hug.js',
       port: 3002,
       env: {
         NODE_ENV: 'production',
@@ -65,7 +65,7 @@ module.exports = {
     },
     {
       name: 'keep-alive',
-      script: 'keep-alive.js',
+      script: 'scripts/keep-alive.js',
       env: {
         NODE_ENV: 'production',
         APP_URL: process.env.APP_URL || 'https://your-app-name.onrender.com',

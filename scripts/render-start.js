@@ -20,7 +20,7 @@ console.log(`📡 Port: ${PORT}`);
 console.log(`🌐 App URL: ${APP_URL}`);
 
 // Start the main application
-const mainApp = spawn('node', ['load_balancer.js'], {
+const mainApp = spawn('node', ['src/core/load-balancer/load_balancer.js'], {
     stdio: 'inherit',
     env: {
         ...process.env,
@@ -29,7 +29,7 @@ const mainApp = spawn('node', ['load_balancer.js'], {
 });
 
 // Start keep-alive service
-const keepAlive = spawn('node', ['keep-alive.js'], {
+const keepAlive = spawn('node', ['scripts/keep-alive.js'], {
     stdio: 'inherit',
     env: {
         ...process.env,

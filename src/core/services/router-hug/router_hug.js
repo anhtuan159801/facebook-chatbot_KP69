@@ -5,7 +5,7 @@
  * Refactored to eliminate code duplication and improve maintainability.
  */
 
-const BaseChatbotService = require('./base-service');
+const BaseChatbotService = require('../../base-service');
 
 class RouterHugService extends BaseChatbotService {
     constructor() {

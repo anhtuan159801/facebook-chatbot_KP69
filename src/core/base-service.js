@@ -1,6 +1,6 @@
 /**
  * Base Chatbot Service
- * 
+ *
  * This class provides common functionality for all chatbot services
  * to eliminate code duplication and ensure consistency.
  */
@@ -10,9 +10,9 @@ const express = require('express');
 const { Pool } = require('pg');
 
 // Import centralized modules
-const { 
-    SYSTEM_PROMPT, 
-    IMAGE_ANALYSIS_PROMPT, 
+const {
+    SYSTEM_PROMPT,
+    IMAGE_ANALYSIS_PROMPT,
     AUDIO_TRANSCRIPTION_PROMPT,
     CONTEXT_PROMPTS,
     ERROR_PROMPTS,
@@ -22,16 +22,19 @@ const {
     getErrorMessage,
     getRatingResponse,
     getJourneyMessage
-} = require('./prompts');
+} = require('../utils/prompts');
 
-const { 
-    AIFactory, 
-    createRetryWrapper, 
-    createTimeoutWrapper 
-} = require('./ai-models');
+const {
+    AIFactory,
+    createRetryWrapper,
+    createTimeoutWrapper
+} = require('../ai/ai-models');
 
-const { createLogger } = require('./logger');
-const aiProviderManager = require('./ai-provider-manager');
+const { createLogger } = require('../utils/logger');
+const aiProviderManager = require('../ai/ai-provider-manager');
+const LocalRAGSystem = require('../ai/local-rag-system');
+const ChatHistoryManager = require('../utils/chat-history-manager');
+const KnowledgeManager = require('../utils/knowledge-manager');
 
 class BaseChatbotService {
     constructor(port, serviceName, aiProvider = 'gemini') {
@@ -69,10 +72,37 @@ class BaseChatbotService {
         
         // Initialize queue system
         this.initializeQueue();
-        
+
+        // Initialize RAG system
+        this.ragSystem = new LocalRAGSystem();
+
+        // Initialize Chat History Manager
+        this.chatHistoryManager = new ChatHistoryManager();
+
+        // Initialize Knowledge Manager
+        this.knowledgeManager = new KnowledgeManager();
+
+        // Initialize Knowledge RAG Processor to handle knowledge-rag files
+        try {
+          const KnowledgeRAGProcessor = require('../utils/knowledge-rag-processor');
+          this.knowledgeRAGProcessor = new KnowledgeRAGProcessor();
+        } catch (error) {
+          console.warn('⚠️ Knowledge RAG Processor not available:', error.message);
+          this.knowledgeRAGProcessor = null;
+        }
+
+        // Initialize Knowledge RAG Watcher to automatically monitor and update knowledge
+        try {
+          const KnowledgeRAGWatcher = require('../utils/knowledge-rag-watcher');
+          this.knowledgeRAGWatcher = new KnowledgeRAGWatcher();
+        } catch (error) {
+          console.warn('⚠️ Knowledge RAG Watcher not available:', error.message);
+          this.knowledgeRAGWatcher = null;
+        }
+
         // Setup routes
         this.setupRoutes();
-        
+
         // Setup graceful shutdown
         this.setupGracefulShutdown();
     }
@@ -460,25 +490,30 @@ class BaseChatbotService {
     }
     
     async processNormalMessage(sender_psid, userMessage) {
-        const history = await this.getConversationHistory(sender_psid);
-        if (history.length > 0 && history[0].role === 'model') {
-            history.shift();
+        // Generate or use existing session ID
+        const sessionId = this.getSessionId(sender_psid);
+
+        // Get relevant knowledge from RAG system
+        const detectedContext = this.detectContext(userMessage);
+        const relevantKnowledge = await this.ragSystem.getRelevantKnowledge(userMessage, detectedContext);
+        const knowledgeContext = this.ragSystem.formatKnowledgeForPrompt(relevantKnowledge);
+
+        // Get conversation history from both old and new systems
+        const oldHistory = await this.getConversationHistory(sender_psid);
+        if (oldHistory.length > 0 && oldHistory[0].role === 'model') {
+            oldHistory.shift();
         }
 
-        // Check quota
-        if (this.dailyQuotaUsed >= this.DAILY_QUOTA_LIMIT) {
-            const response = {
-                "text": "Xin lỗi, hôm nay mình đã đạt giới hạn sử dụng API. Vui lòng quay lại vào ngày mai nhé! 🙏"
-            };
-            await this.callSendAPI(sender_psid, response);
-            return;
-        }
+        // Get recent chat history for better context
+        const recentChatHistory = await this.chatHistoryManager.getConversationHistory(sender_psid, sessionId, 10);
+        const recentMessages = recentChatHistory.success ?
+            recentChatHistory.data.map(msg => msg.message_content).join(' ') :
+            oldHistory.slice(-5).map(msg => msg.parts[0].text).join(' ');
 
         // Enhanced system prompt with context awareness
         let contextType = null;
-        const recentMessages = history.slice(-5).map(msg => msg.parts[0].text).join(' ');
-        
-        if (userMessage.toLowerCase().includes('quên mật khẩu') || 
+
+        if (userMessage.toLowerCase().includes('quên mật khẩu') ||
             userMessage.toLowerCase().includes('lỗi đăng nhập') ||
             userMessage.toLowerCase().includes('không truy cập') ||
             userMessage.toLowerCase().includes('bị khóa') ||
@@ -493,23 +528,43 @@ class BaseChatbotService {
                 contextType = 'PUBLIC_SERVICE';
             }
         }
-        
-        const enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
 
-        const messages = [
-            { role: "system", content: enhancedSystemPrompt },
-            ...history.map(msg => ({
+        let enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
+
+        // Add RAG context if we have relevant information
+        if (knowledgeContext.trim()) {
+            enhancedSystemPrompt = `${enhancedSystemPrompt}\n\nTHÔNG TIN THAM KHẢO TỪ CƠ SỞ TRI THỨC CHÍNH THỨC:\n${knowledgeContext}\n\nHãy sử dụng thông tin này để trả lời chính xác, có thể gửi kèm link nguồn và link biểu mẫu nếu có.`;
+        }
+
+        // Combine old and new history for AI context
+        const combinedHistory = [
+            ...oldHistory.map(msg => ({
                 role: msg.role === 'user' ? 'user' : 'assistant',
                 content: msg.parts[0].text
             })),
+            ...(recentChatHistory.success ?
+                recentChatHistory.data.map(msg => ({
+                    role: msg.message_type === 'user' ? 'user' : 'assistant',
+                    content: msg.message_content
+                })).slice(-10) : []) // Use only last 10 messages from new history
+        ];
+
+        const messages = [
+            { role: "system", content: enhancedSystemPrompt },
+            ...combinedHistory,
             { role: "user", content: userMessage }
         ];
 
         try {
+            // Track start time for response time measurement
+            const startTime = Date.now();
+
             let text = await this.callAI(messages, sender_psid);
             if (!text || text.trim() === '') {
                 text = getErrorMessage('SYSTEM_ERROR');
             }
+
+            const responseTime = Date.now() - startTime;
 
             if (text.includes('STEP')) {
                 const userSession = this.userSessions.get(sender_psid) || {};
@@ -519,6 +574,14 @@ class BaseChatbotService {
                 await this.callSendAPI(sender_psid, { text: `Xin chào! 👋\n${text}\nBạn có muốn mình hướng dẫn từng bước một không?` });
                 await this.callSendAPI(sender_psid, {
                     text: "Vui lòng trả lời 'Có' nếu bạn muốn được hướng dẫn từng bước, hoặc 'Không' nếu bạn chỉ muốn xem hướng dẫn tổng quát."
+                });
+
+                // Save to both history systems
+                await this.saveConversation(sender_psid, userMessage, text);
+                await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
+                await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
+                    intent: detectedContext,
+                    journey_step: true
                 });
             } else {
                 if (text.length > 2000) {
@@ -538,9 +601,15 @@ class BaseChatbotService {
                     const ext = this.extractSuggestions(text);
                     await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, ext.suggestions);
                 }
+
+                // Save to both history systems
+                await this.saveConversation(sender_psid, userMessage, text);
+                await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
+                await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
+                    intent: detectedContext
+                });
             }
 
-            await this.saveConversation(sender_psid, userMessage, text);
             this.dailyQuotaUsed++;
             console.log(`✅ Successfully processed message for ${sender_psid}`);
         } catch (error) {
@@ -549,6 +618,13 @@ class BaseChatbotService {
                 "text": getErrorMessage('SYSTEM_ERROR')
             };
             await this.callSendAPI(sender_psid, errorResponse);
+
+            // Save error to history
+            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
+            await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, errorResponse.text, null, {
+                intent: detectedContext,
+                error: true
+            });
         }
     }
     
@@ -565,6 +641,7 @@ class BaseChatbotService {
     
     async processImageAttachment(sender_psid, attachment) {
         try {
+            const sessionId = this.getSessionId(sender_psid);
             const imageUrl = attachment.payload.url.trim();
             const fetch = await import('node-fetch');
             const imageResponse = await fetch.default(imageUrl);
@@ -572,6 +649,9 @@ class BaseChatbotService {
             const base64Image = Buffer.from(arrayBuffer).toString('base64');
             const mimeType = attachment.payload.mime_type || 'image/jpeg';
             const dataUrl = `${mimeType};base64,${base64Image}`;
+
+            // Track start time for response time measurement
+            const startTime = Date.now();
 
             const messages = [
                 {
@@ -588,12 +668,24 @@ class BaseChatbotService {
                 text = getErrorMessage('IMAGE_ERROR');
             }
 
+            const responseTime = Date.now() - startTime;
+
             const extractionResult = this.extractSuggestions(text);
             const quickReplies = extractionResult.suggestions;
             const cleanedText = extractionResult.cleanedText;
             const response = { "text": cleanedText };
             await this.callSendAPIWithRating(sender_psid, response, quickReplies);
+
+            // Save to both history systems
             await this.saveConversation(sender_psid, "[Ảnh đính kèm]", cleanedText);
+            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, "[Ảnh đính kèm: hình ảnh được gửi]", 'image', {
+                attachment_type: 'image',
+                mime_type: mimeType
+            });
+            await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, cleanedText, responseTime, {
+                intent: 'image_analysis'
+            });
+
             console.log(`✅ Processed image for ${sender_psid}`);
         } catch (error) {
             console.error(`❌ Error processing image for ${sender_psid}:`, error);
@@ -601,28 +693,43 @@ class BaseChatbotService {
                 "text": getErrorMessage('IMAGE_ERROR')
             };
             await this.callSendAPI(sender_psid, response);
+
+            // Save error to history
+            const sessionId = this.getSessionId(sender_psid);
+            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, "[Ảnh đính kèm]", 'image', {
+                attachment_type: 'image',
+                error: true
+            });
+            await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, response.text, null, {
+                intent: 'image_analysis',
+                error: true
+            });
         }
     }
     
     async processAudioAttachment(sender_psid, attachment) {
         try {
+            const sessionId = this.getSessionId(sender_psid);
             const audioUrl = attachment.payload.url.trim();
             console.log(`🎵 Processing audio from Facebook: ${audioUrl}`);
-            
+
             const fetch = await import('node-fetch');
             const audioResponse = await fetch.default(audioUrl);
-            
+
             if (!audioResponse.ok) {
                 throw new Error(`Failed to fetch audio: ${audioResponse.status}`);
             }
-            
+
             const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
             const mimeType = attachment.payload.mime_type || 'audio/mp4';
-            
+
             console.log(`📊 Audio info: ${mimeType}, size: ${audioBuffer.length} bytes`);
 
             const transcript = await this.transcribeAudio(audioBuffer, mimeType);
             console.log(`🎤 Transcribed: "${transcript}"`);
+
+            // Track start time for response time measurement
+            const startTime = Date.now();
 
             const history = await this.getConversationHistory(sender_psid);
             if (history.length > 0 && history[0].role === 'model') {
@@ -639,7 +746,7 @@ class BaseChatbotService {
             } else if (recent.includes('VssID') || recent.includes('bảo hiểm')) {
                 contextType = 'VssID';
             }
-            
+
             const enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
 
             const messages = [
@@ -653,10 +760,12 @@ class BaseChatbotService {
                 text = getErrorMessage('SYSTEM_ERROR');
             }
 
+            const responseTime = Date.now() - startTime;
+
             const extractionResult = this.extractSuggestions(text);
             const quickReplies = extractionResult.suggestions;
             text = extractionResult.cleanedText;
-            
+
             if (text.length > 2000) {
                 const chunks = this.splitMessage(text, 2000);
                 for (let i = 0; i < chunks.length; i++) {
@@ -673,8 +782,18 @@ class BaseChatbotService {
                 const response = { "text": text };
                 await this.callSendAPIWithRating(sender_psid, response, quickReplies);
             }
-            
+
+            // Save to both history systems
             await this.saveConversation(sender_psid, `[Voice: ${transcript}]`, text);
+            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, `[Voice: ${transcript}]`, 'audio', {
+                attachment_type: 'audio',
+                mime_type: mimeType,
+                transcript: transcript
+            });
+            await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
+                intent: 'audio_response'
+            });
+
             console.log(`✅ Processed audio question for ${sender_psid}: "${transcript}"`);
         } catch (error) {
             console.error(`❌ Error processing audio for ${sender_psid}:`, error);
@@ -682,6 +801,17 @@ class BaseChatbotService {
                 "text": getErrorMessage('AUDIO_ERROR')
             };
             await this.callSendAPI(sender_psid, response);
+
+            // Save error to history
+            const sessionId = this.getSessionId(sender_psid);
+            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, "[Voice message]", 'audio', {
+                attachment_type: 'audio',
+                error: true
+            });
+            await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, response.text, null, {
+                intent: 'audio_response',
+                error: true
+            });
         }
     }
     
@@ -949,7 +1079,106 @@ class BaseChatbotService {
         this.app.listen(this.port, () => {
             console.log(`🚀 ${this.serviceName} running on port ${this.port}`);
             console.log(`🤖 AI Provider: ${this.aiProvider}`);
+
+            // Load knowledge from knowledge-rag folder if available
+            this.loadKnowledgeFromRAG();
+
+            // Start watching for new knowledge files
+            this.startKnowledgeWatcher();
         });
+    }
+
+    async loadKnowledgeFromRAG() {
+        if (this.knowledgeRAGProcessor) {
+            try {
+                console.log('🔄 Loading knowledge from knowledge-rag folder...');
+                await this.knowledgeRAGProcessor.processAllKnowledgeFiles();
+                console.log('✅ Knowledge from knowledge-rag folder loaded successfully');
+            } catch (error) {
+                console.error('❌ Error loading knowledge from knowledge-rag folder:', error);
+            }
+        } else {
+            console.log('⚠️ Knowledge RAG Processor not available, skipping knowledge loading');
+        }
+    }
+
+    async startKnowledgeWatcher() {
+        if (this.knowledgeRAGWatcher) {
+            try {
+                console.log('👀 Starting knowledge watcher to monitor for new files...');
+                await this.knowledgeRAGWatcher.processAllKnowledge(); // Process any existing files first
+                this.knowledgeRAGWatcher.startWatching(); // Then start watching for changes
+                console.log('✅ Knowledge watcher started successfully');
+            } catch (error) {
+                console.error('❌ Error starting knowledge watcher:', error);
+            }
+        } else {
+            console.log('⚠️ Knowledge RAG Watcher not available, skipping watcher initialization');
+        }
+    }
+
+    // Helper method to detect context using the prompts utility
+    detectContext(message) {
+        return this.promptsDetectContext(message);
+    }
+
+    // We need to import the detectContext function from prompts
+    // This should be added in the initialization part
+    promptsDetectContext(message) {
+        const msg = message.toLowerCase();
+        if (msg.includes('vneid') || msg.includes('định danh') || msg.includes('cccd số') || msg.includes('giấy tờ số')) {
+            return 'vneid';
+        }
+        if (msg.includes('vssid') || msg.includes('bảo hiểm xã hội') || msg.includes('bhxh') || msg.includes('sổ bhxh')) {
+            return 'vssid';
+        }
+        if (msg.includes('etax') || msg.includes('thuế') || msg.includes('khai thuế') || msg.includes('hóa đơn điện tử')) {
+            return 'etax';
+        }
+        if (msg.includes('dịch vụ công') || msg.includes('dichvucong') || msg.includes('nộp hồ sơ') || msg.includes('thủ tục hành chính')) {
+            return 'dichvucong';
+        }
+        if (msg.includes('nước máy') || msg.includes('sawaco') || msg.includes('cấp nước') || msg.includes('hóa đơn nước')) {
+            return 'sawaco';
+        }
+        if (msg.includes('điện') || msg.includes('evn') || msg.includes('hóa đơn điện') || msg.includes('điện lực')) {
+            return 'evnhcmc';
+        }
+        if (msg.includes('thanh toán') || msg.includes('momo') || msg.includes('vnpay') || msg.includes('zalopay') || msg.includes('ví điện tử')) {
+            return 'payment';
+        }
+        return null;
+    }
+
+    // Helper method to generate or retrieve session ID
+    getSessionId(userId) {
+        // Check if user already has an active session
+        let sessionId = this.userSessions.get(userId)?.sessionId;
+
+        if (!sessionId) {
+            // Create new session ID (using timestamp + userId hash)
+            const timestamp = Date.now();
+            const hash = this.simpleHash(`${userId}-${timestamp}`);
+            sessionId = `${userId}-${timestamp}-${hash}`;
+
+            // Store in user session
+            let userSession = this.userSessions.get(userId) || {};
+            userSession.sessionId = sessionId;
+            this.userSessions.set(userId, userSession);
+        }
+
+        return sessionId;
+    }
+
+    // Simple hash function for session ID generation
+    simpleHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return Math.abs(hash).toString(36); // Convert to base36 for shorter string
     }
 
     // Cleanup method
@@ -957,6 +1186,16 @@ class BaseChatbotService {
         if (this.geminiCheckInterval) {
             clearInterval(this.geminiCheckInterval);
             console.log('🧹 Cleaned up Gemini check interval');
+        }
+
+        // Stop the knowledge watcher if it exists
+        if (this.knowledgeRAGWatcher) {
+            try {
+                this.knowledgeRAGWatcher.stopWatching();
+                console.log('🧹 Cleaned up Knowledge RAG Watcher');
+            } catch (error) {
+                console.error('❌ Error stopping Knowledge RAG Watcher:', error);
+            }
         }
     }
 }

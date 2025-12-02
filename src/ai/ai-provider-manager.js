@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { createLogger } = require('./logger');
+const { createLogger } = require('../utils/logger');
 
 class AIProviderManager {
     constructor() {

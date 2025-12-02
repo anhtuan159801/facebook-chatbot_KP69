@@ -8,17 +8,17 @@ const fs = require('fs');
 const SYSTEM_CONFIG = {
     loadBalancer: {
         port: 3000,
-        file: 'load_balancer.js',
+        file: 'src/core/load-balancer/load_balancer.js',
         name: 'Load Balancer'
     },
     gemini: {
         port: 3001,
-        file: 'gemini.js',
+        file: 'src/core/services/gemini/gemini.js',
         name: 'Gemini Bot'
     },
     routerHug: {
         port: 3002,
-        file: 'router_hug.js',
+        file: 'src/core/services/router-hug/router_hug.js',
         name: 'Router Hug Bot'
     }
 };

@@ -659,9 +659,67 @@ MIT License - xem file [LICENSE](LICENSE) để biết thêm chi tiết.
 * 🐛 Issues: [GitHub Issues](https://github.com/anhtuan159801/facebook-chatbot_KP69/issues)
 * 📖 Documentation: [Wiki](https://github.com/anhtuan159801/facebook-chatbot_KP69/wiki)
 
+## 🤖 RAG System Setup (Updated Feature)
+
+The chatbot now includes a comprehensive Retrieval-Augmented Generation system for more accurate responses using official Vietnamese government documents. The system has already downloaded thousands of documents from official sources to the `Knowlegd-rag/downloads_ministries` folder.
+
+To use this feature effectively:
+
+### 1. Initial Setup
+After deployment, import the downloaded knowledge documents:
+
+```bash
+npm run import-knowledge-rag
+```
+
+This will process all the documents in the `Knowlegd-rag/downloads_ministries` folder and store their embeddings in your Supabase vector database for semantic search.
+
+### 2. Automatic Updates
+The system includes a knowledge watcher that monitors for new documents:
+
+```bash
+# Process new documents automatically
+npm run crawl:once  # Downloads new documents from government sources
+npm run import-knowledge-rag  # Imports new documents to the knowledge base
+```
+
+### 3. Manual Document Upload
+You can also upload custom documents:
+
+```bash
+npm run upload:doc
+```
+
+### 4. Knowledge Base Verification
+Check that your knowledge base is working:
+
+```bash
+# Count total documents in database
+node -e "const KnowledgeManager = require('./src/utils/knowledge-manager'); const km = new KnowledgeManager(); km.countKnowledgeDocuments();"
+```
+
+## 📚 RAG System Architecture
+
+The RAG system works as follows:
+- **Document Crawling**: Automatically downloads documents from official government sources
+- **Text Extraction**: Extracts text content from DOC, DOCX files
+- **Embedding Generation**: Creates vector embeddings for semantic search
+- **Knowledge Storage**: Stores in Supabase with vector similarity search capabilities
+- **Retrieval**: Finds relevant documents based on user queries
+- **Augmentation**: Adds official information to AI responses
+
+The system is already populated with thousands of official Vietnamese administrative procedures covering:
+- Ministry of Public Security
+- Ministry of Industry and Trade
+- Ministry of Education and Training
+- Ministry of Science and Technology
+- Ministry of Health
+- And many other government agencies
+
+
 ## 🤖 RAG System Setup (New Feature)
 
-The chatbot now includes a Retrieval-Augmented Generation system for more accurate responses using official Vietnamese government documents. To use this feature:
+The chatbot now includes a comprehensive Retrieval-Augmented Generation (RAG) system that provides accurate responses using official Vietnamese government documents. The system has already downloaded thousands of administrative procedures from various Vietnamese government ministries and is ready to be used.
 
 ### Supabase Configuration Required
 1. Create a free Supabase account at [supabase.com](https://supabase.com)
@@ -675,13 +733,13 @@ The chatbot now includes a Retrieval-Augmented Generation system for more accura
 5. Run the schema in `docs/supabase-knowledge-schema.sql` in your Supabase SQL Editor
 
 ### Using the Knowledge Base
-The system has already downloaded thousands of official Vietnamese administrative procedures from government ministries. You can:
+The system has already downloaded thousands of official Vietnamese administrative procedures from government ministries, containing over 3,700 documents from various Vietnamese ministries. The system automatically loads and uses this knowledge when responding to user queries. You can:
 
-1. **Import all knowledge** from downloaded documents:
+1. **Import all existing knowledge** to your database (recommended for production):
    ```bash
-   npm run import:knowledge
+   npm run import-knowledge-rag
    ```
-   This will process all documents in the `Knowlegd-rag/downloads_ministries` folder and store them in your Supabase database.
+   This will process all documents in the `Knowlegd-rag/downloads_ministries` folder and store them in your Supabase database with vector embeddings for semantic search.
 
 2. **Populate sample knowledge** (for testing):
    ```bash
@@ -699,40 +757,118 @@ The system has already downloaded thousands of official Vietnamese administrativ
    ```
 
 ### Koyeb Deployment with RAG System
-When deploying to Koyeb with RAG functionality:
 
-1. **Set up Supabase** and get your URL and Anon Key
-2. **Configure environment variables** in Koyeb:
-   - SUPABASE_URL=https://your-project.supabase.co
-   - SUPABASE_ANON_KEY=your_supabase_anon_key
-   - ALL other environment variables as mentioned in the Koyeb section
+When deploying to Koyeb with RAG functionality, follow these detailed steps:
 
-3. **Database schema**:
-   - Make sure to run the SQL schema in `docs/supabase-knowledge-schema.sql` in your Supabase project
+#### A. Prerequisites
+1. **Supabase Account**: Sign up at [supabase.com](https://supabase.com) and create a new project
+2. **Enable Vector Extension**: Go to Database > Extensions and enable the `vector` extension
+3. **API Credentials**: Copy your Project URL and anon key (under Settings > API)
 
-4. **Import knowledge after deployment**:
-   - The system has already downloaded thousands of official Vietnamese government documents in the `Knowlegd-rag/downloads_ministries` folder
-   - After deployment, you can import these documents using: `npm run import-knowledge-rag`
-   - This will process all documents and store them in your Supabase database for RAG functionality
-   - You can also run this periodically to keep your knowledge base up-to-date
+#### B. Prepare Your Repository
+1. **Fork the repository** to your GitHub account
+2. **Clone locally** and make any customizations needed
+3. **Set up your Facebook App and Page** with webhook URL pointing to your future Koyeb URL
 
-5. **For production use**, you should import the knowledge base before the system goes live:
+#### C. Deploy on Koyeb
+
+1. **Sign in to Koyeb** using your GitHub account
+2. **Create a new Service** from your forked repository
+3. **Select Node.js runtime** (the app will auto-detect)
+4. **Set Environment Variables** in the deployment interface:
+
+   ```
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   DB_HOST=your_postgresql_host
+   DB_PORT=5432
+   DB_USER=your_db_username
+   DB_PASSWORD=your_db_password
+   DB_NAME=your_database_name
+   VERIFY_TOKEN=your_custom_verify_token
+   PAGE_ACCESS_TOKEN=your_facebook_page_access_token
+   GEMINI_API_KEY=your_gemini_api_key
+   OPENROUTER_API_KEY=your_openrouter_api_key
+   HUGGINGFACE_API_KEY=your_huggingface_api_key
+   ADMIN_KEY=your_admin_key
+   NODE_ENV=production
+   ```
+
+5. **Deployment Commands**:
+   - Build Command: `npm install`
+   - Run Command: `npm run start:all`
+
+6. **Scale Configuration**:
+   - Instance Type: Choose based on expected traffic (try dev-1 for testing)
+   - Auto-Scaling: Enable if needed to scale from 0 to 3 instances
+
+#### D. Post-Deployment Setup
+
+1. **Run Database Schema**: Execute the schema in `docs/supabase-knowledge-schema.sql` in your Supabase SQL Editor
+
+2. **Import Knowledge Base**: After successful deployment, import the pre-downloaded government documents:
+   ```bash
+   # You can run this with a one-time job or execute in your deployed environment
+   npm run import-knowledge-rag
+   ```
+
+   Alternatively, you can run the import script directly:
    ```bash
    node scripts/import-knowledge-rag.js
    ```
 
-6. **Automatic knowledge updates (optional)**:
-   - You can set up a cron job or scheduled task to run `npm run import-knowledge-rag` periodically
-   - This will keep your knowledge base updated with the latest government procedures
-   - You can also run `npm run crawl:once` to download new documents from government websites
+3. **Verify Installation**:
+   - Check that the service is running at your Koyeb URL
+   - Confirm the endpoint is accessible: `https://your-app-name-koyeb.app/health`
+   - Test knowledge retrieval: `https://your-app-name-koyeb.app/status`
+
+#### E. Configure Facebook Webhook
+
+1. In your Facebook Developer Console:
+   - Go to your app > Settings > Basic
+   - Add your Koyeb URL to the "App Domains" list
+   - For example: `https://your-app-name-koyeb.app`
+
+2. For the webhook:
+   - Go to Messenger > Settings
+   - Use the callback URL: `https://your-app-name-koyeb.app/webhook`
+   - Use your configured VERIFY_TOKEN
+   - Subscribe to messages and messaging_postbacks
+
+#### F. Managing RAG Content
+
+1. **Update Knowledge Base**: Run the import script periodically to refresh with the latest government documents:
+   ```bash
+   npm run import-knowledge-rag
+   ```
+
+2. **Monitor Usage**: Check your Koyeb dashboard for resource usage and scale accordingly
+
+3. **Keep Documents Updated**: You can run `npm run crawl:once` to download new documents and then import them again
+
+#### G. Troubleshooting Koyeb Deployment
+
+1. **Health Checks**: If the app fails health checks, check the logs in Koyeb dashboard
+2. **Database Connection**: Ensure your database allows connections from Koyeb IP addresses
+3. **Supabase Connection**: Verify that your Supabase project URL and anon key are correct
+4. **Memory Limits**: If you get memory issues, upgrade to a larger instance type
 
 For complete setup instructions, see `docs/RAG_SYSTEM.md`.
 
+#### H. Advanced Koyeb Configuration
+
+1. **Custom Domain**: In Koyeb dashboard, go to Custom Domains and add your domain
+2. **SSL Certificate**: Koyeb provides free SSL certificates for all domains
+3. **Environment Scale**: Adjust the minimum and maximum instance counts based on expected load
+4. **Health Checks**: The app exposes a `/health` endpoint for Koyeb health checks
+
 ### Available Scripts for Knowledge Management
 - `npm run populate:knowledge` - Add sample knowledge to database
-- `npm run import-knowledge-rag` - Import knowledge from downloaded documents
+- `npm run import-knowledge-rag` - Import knowledge from downloaded documents to Supabase
+- `npm run refresh:knowledge` - Clear and reimport all knowledge documents
 - `npm run crawl:once` - Crawl and download new documents from government websites
 - `npm run upload:doc` - Upload custom documents to knowledge base
+- `npm run test:knowledge` - Test the knowledge retrieval functionality
 
 ## 🎯 Roadmap
 

@@ -4,8 +4,16 @@ const KnowledgeRAGProcessor = require('./knowledge-rag-processor');
 const { createLogger } = require('./logger');
 
 class KnowledgeRAGWatcher {
-  constructor(knowledgeBasePath = '../../../Knowlegd-rag/downloads_ministries') {
-    this.knowledgeBasePath = path.resolve(__dirname, knowledgeBasePath);
+  constructor(knowledgeBasePath = null) {
+    // Use the same robust path resolution as the processor
+    if (knowledgeBasePath) {
+      this.knowledgeBasePath = path.resolve(knowledgeBasePath);
+    } else {
+      const currentDir = path.resolve(__dirname);
+      const projectRoot = path.join(currentDir, '../..'); // Assuming src/utils is 2 levels deep from root
+      this.knowledgeBasePath = path.resolve(projectRoot, 'Knowlegd-rag', 'downloads_ministries');
+    }
+
     this.processor = new KnowledgeRAGProcessor();
     this.logger = createLogger('KnowledgeRAGWatcher');
     this.watcher = null;

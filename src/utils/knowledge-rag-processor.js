@@ -18,26 +18,36 @@ class KnowledgeRAGProcessor {
   /**
    * Process all knowledge files from the knowledge-rag folder
    */
-  async processAllKnowledgeFiles(knowledgeBasePath = '../../../Knowlegd-rag/downloads_ministries') {
+  async processAllKnowledgeFiles(knowledgeBasePath = null) {
     try {
       console.log('🔄 Starting to process knowledge files from knowledge-rag folder...');
-      
-      // Resolve the absolute path to the knowledge-rag folder
-      const absolutePath = path.resolve(__dirname, knowledgeBasePath);
+
+      // Use a more robust path resolution - try to detect project root
+      let absolutePath;
+
+      if (knowledgeBasePath) {
+        absolutePath = path.resolve(knowledgeBasePath);
+      } else {
+        // Try to find the project root by looking for package.json or a known directory
+        const currentDir = path.resolve(__dirname);
+        const projectRoot = path.join(currentDir, '../..'); // Assuming src/utils is 2 levels deep from root
+        absolutePath = path.resolve(projectRoot, 'Knowlegd-rag', 'downloads_ministries');
+      }
+
       console.log(`📁 Processing knowledge files from: ${absolutePath}`);
-      
+
       const allMinistries = await fs.readdir(absolutePath);
-      
+
       for (const ministry of allMinistries) {
         const ministryPath = path.join(absolutePath, ministry);
         const stats = await fs.stat(ministryPath);
-        
+
         if (stats.isDirectory()) {
           console.log(`🏢 Processing ministry: ${ministry}`);
           await this.processMinistryFiles(ministryPath, ministry);
         }
       }
-      
+
       console.log('✅ Completed processing all knowledge files from knowledge-rag folder');
     } catch (error) {
       console.error('❌ Error processing knowledge files:', error);
@@ -51,7 +61,7 @@ class KnowledgeRAGProcessor {
   async processMinistryFiles(ministryPath, ministryName) {
     try {
       const ministryFilesPath = path.join(ministryPath, 'huong_dan');
-      
+
       // Check if huong_dan directory exists
       let filesPath = ministryFilesPath;
       try {
@@ -93,15 +103,15 @@ class KnowledgeRAGProcessor {
       // Extract procedure information from the file name
       const fileNameWithoutExt = path.parse(fileName).name;
       const procedureCode = fileNameWithoutExt.replace(/_/g, '.');
-      
+
       // For docx files, we need to extract the content
       // We'll use a simple approach by storing the file path and using it as content reference
       const content = `Thông tin thủ tục hành chính - ${ministryName}\nMã thủ tục: ${procedureCode}\nĐường dẫn file: ${filePath}\n\nNội dung chi tiết vui lòng xem trong file đính kèm.`;
-      
+
       const title = `Thủ tục hành chính - ${ministryName} - ${fileNameWithoutExt}`;
       const sourceUrl = `file://${filePath}`;
       const category = 'administrative_procedures';
-      
+
       // Store in knowledge base
       const result = await this.knowledgeManager.generateKnowledgeFromInfo(
         title,
@@ -130,16 +140,16 @@ class KnowledgeRAGProcessor {
       console.log(`   📋 Processing list file: ${fileName}`);
 
       const content = await fs.readFile(filePath, 'utf8');
-      
+
       // Extract procedures from the list file
       const procedures = this.extractProceduresFromList(content);
-      
+
       for (const procedure of procedures) {
         const title = `Thủ tục: ${procedure.code} - ${procedure.title}`;
         const sourceUrl = `file://${filePath}`;
         const category = 'administrative_procedures_list';
         const fullContent = `Mã thủ tục: ${procedure.code}\nTên thủ tục: ${procedure.title}\nURL: ${procedure.url}\n\nNội dung chi tiết: ${procedure.description || 'Thông tin chi tiết vui lòng xem trong danh sách đầy đủ.'}`;
-        
+
         // Store in knowledge base
         const result = await this.knowledgeManager.generateKnowledgeFromInfo(
           title,
@@ -165,11 +175,11 @@ class KnowledgeRAGProcessor {
    */
   extractProceduresFromList(content) {
     const procedures = [];
-    
+
     // Extract procedures using regex patterns
     const procedurePattern = /(\d+\..*?)\s*\n\s*URL:\s*(https?:\/\/[^\s\n]+)/g;
     let match;
-    
+
     while ((match = procedurePattern.exec(content)) !== null) {
       procedures.push({
         code: match[1].trim(),
@@ -178,7 +188,7 @@ class KnowledgeRAGProcessor {
         description: 'Thông tin chi tiết về thủ tục hành chính'
       });
     }
-    
+
     // Alternative pattern for different formats
     const altPattern = /(\d+\..*?)\s*\n\s*\[(.*?)\]\s*(.*?)\n/g;
     while ((match = altPattern.exec(content)) !== null) {
@@ -189,7 +199,7 @@ class KnowledgeRAGProcessor {
         description: match[1].trim()
       });
     }
-    
+
     return procedures;
   }
 
@@ -200,7 +210,7 @@ class KnowledgeRAGProcessor {
     try {
       const absolutePath = path.resolve(__dirname, knowledgeBasePath);
       const ministryPath = path.join(absolutePath, ministryName);
-      
+
       const stats = await fs.stat(ministryPath);
       if (stats.isDirectory()) {
         console.log(`🏢 Processing specific ministry: ${ministryName}`);
@@ -220,12 +230,12 @@ class KnowledgeRAGProcessor {
   async refreshAllKnowledge(knowledgeBasePath = '../../../Knowlegd-rag/downloads_ministries') {
     try {
       console.log('🔄 Refreshing all knowledge from knowledge-rag folder...');
-      
+
       // Clear existing knowledge if needed (optional)
       // await this.clearKnowledgeByCategory('administrative_procedures');
-      
+
       await this.processAllKnowledgeFiles(knowledgeBasePath);
-      
+
       console.log('✅ Knowledge refresh completed');
     } catch (error) {
       console.error('❌ Error refreshing knowledge:', error);

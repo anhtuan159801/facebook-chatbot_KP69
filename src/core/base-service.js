@@ -510,7 +510,7 @@ class BaseChatbotService {
             recentChatHistory.data.map(msg => msg.message_content).join(' ') :
             oldHistory.slice(-5).map(msg => msg.parts[0].text).join(' ');
 
-        // Enhanced system prompt with context awareness
+        // Enhanced system prompt with context awareness - prioritize knowledge base
         let contextType = null;
 
         if (userMessage.toLowerCase().includes('quên mật khẩu') ||
@@ -529,11 +529,27 @@ class BaseChatbotService {
             }
         }
 
-        let enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
-
-        // Add RAG context if we have relevant information
+        // If we have relevant knowledge, create a focused system prompt
+        let enhancedSystemPrompt;
         if (knowledgeContext.trim()) {
-            enhancedSystemPrompt = `${enhancedSystemPrompt}\n\nTHÔNG TIN THAM KHẢO TỪ CƠ SỞ TRI THỨC CHÍNH THỨC:\n${knowledgeContext}\n\nHãy sử dụng thông tin này để trả lời chính xác, có thể gửi kèm link nguồn và link biểu mẫu nếu có.`;
+            // Create a focused prompt that prioritizes knowledge base information
+            enhancedSystemPrompt = `Bạn là một trợ lý thông minh hỗ trợ người dân trong các thủ tục hành chính Việt Nam.\n\n`;
+            enhancedSystemPrompt += `NHIỆM VỤ CHÍNH:\n`;
+            enhancedSystemPrompt += `- Trả lời CHÍNH XÁC dựa trên thông tin từ CƠ SỞ TRI THỨC CHÍNH THỨC dưới đây\n`;
+            enhancedSystemPrompt += `- Ưu tiên sử dụng các THÔNG TIN CỤ THỂ: mã thủ tục, thời gian, phí, cơ quan thực hiện, thành phần hồ sơ, trình tự thực hiện\n`;
+            enhancedSystemPrompt += `- Trả lời NGẮN GỌN, RÕ RÀNG và CÓ TRỌNG TÂM\n`;
+            enhancedSystemPrompt += `- Cung cấp LINK CHI TIẾT nếu có sẵn trong nguồn\n`;
+            enhancedSystemPrompt += `- Tránh nội dung chung chung, không liên quan\n\n`;
+            enhancedSystemPrompt += `CƠ SỞ TRI THỨC CHÍNH THỨC:\n${knowledgeContext}\n\n`;
+            enhancedSystemPrompt += `HƯỚNG DẪN TRẢ LỜI:\n`;
+            enhancedSystemPrompt += `- Bắt đầu bằng việc nêu rõ mã thủ tục và tên thủ tục nếu có\n`;
+            enhancedSystemPrompt += `- Liệt kê các bước thực hiện cụ thể nếu người dùng hỏi về quy trình\n`;
+            enhancedSystemPrompt += `- Nêu rõ phí, lệ phí và thời gian giải quyết\n`;
+            enhancedSystemPrompt += `- Cung cấp thông tin liên hệ hoặc link chi tiết nếu có\n`;
+            enhancedSystemPrompt += `- Nếu không có thông tin liên quan, hãy từ chối lịch sự và hướng người dùng đến nguồn chính thức`;
+        } else {
+            // Use default system prompt when no knowledge base is available
+            enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
         }
 
         // Combine old and new history for AI context
@@ -563,6 +579,9 @@ class BaseChatbotService {
             if (!text || text.trim() === '') {
                 text = getErrorMessage('SYSTEM_ERROR');
             }
+
+            // Post-process the response to remove irrelevant content
+            text = this.postProcessResponse(text, userMessage);
 
             const responseTime = Date.now() - startTime;
 
@@ -1124,29 +1143,67 @@ class BaseChatbotService {
 
     // We need to import the detectContext function from prompts
     // This should be added in the initialization part
+    // Comprehensive context detection with keyword mapping
     promptsDetectContext(message) {
         const msg = message.toLowerCase();
-        if (msg.includes('vneid') || msg.includes('định danh') || msg.includes('cccd số') || msg.includes('giấy tờ số')) {
-            return 'vneid';
+
+        // Expanded keyword mapping for better context detection
+        const keywordMappings = {
+            'vneid': [
+                'vneid', 'định danh', 'cccd số', 'giấy tờ số', 'văn bằng số', 'vneid-cccd',
+                'xác thực định danh', 'định danh điện tử', 'ứng dụng định danh',
+                'đăng nhập vneid', 'tài khoản vneid', 'cấp tài khoản định danh'
+            ],
+            'vssid': [
+                'vssid', 'bảo hiểm xã hội', 'bhxh', 'sổ bhxh', 'bảo hiểm y tế',
+                'thẻ bảo hiểm', 'thu bảo hiểm', 'đăng ký bhxh', 'tra cứu bhxh',
+                'bảo hiểm thất nghiệp', 'bảo hiểm tử tuất', 'sổ bảo hiểm'
+            ],
+            'etax': [
+                'etax', 'thuế', 'khai thuế', 'hóa đơn điện tử', 'hóa đơn gtgt',
+                'nộp thuế', 'cổng thông tin thuế', 'mã số thuế', 'đăng ký thuế',
+                'thuế điện tử', 'gdt', 'tờ khai thuế', 'hồ sơ thuế'
+            ],
+            'dichvucong': [
+                'dịch vụ công', 'dichvucong', 'nộp hồ sơ', 'thủ tục hành chính',
+                'cổng dịch vụ công', 'dvc', 'cổng thông tin dịch vụ công',
+                'đăng ký tạm trú', 'đăng ký kinh doanh', 'cấp giấy phép',
+                'thủ tục', 'hồ sơ', 'nộp trực tuyến', 'cấp phép online'
+            ],
+            'sawaco': [
+                'nước máy', 'sawaco', 'cấp nước', 'hóa đơn nước', 'điện nước',
+                'đăng ký nước', 'cấp nước mới', 'đo chỉ số nước', 'mã khách hàng nước',
+                'công ty nước', 'cskh nước', 'trung an', 'bến thành', 'chợ lớn'
+            ],
+            'evnhcmc': [
+                'điện', 'evn', 'hóa đơn điện', 'điện lực', 'cskh điện',
+                'đăng ký điện mới', 'thay đổi mục đích sử dụng điện', 'đo chỉ số điện',
+                'mã khách hàng điện', 'công ty điện lực', 'evnhcmc', 'trung nam'
+            ],
+            'payment': [
+                'thanh toán', 'momo', 'vnpay', 'zalopay', 'ví điện tử',
+                'chuyển tiền', 'mobile banking', 'quét mã qr', 'thanh toán online',
+                'internet banking', 'payoo', 'viettel money', 'tài khoản thanh toán'
+            ],
+            'temporary_residence': [
+                'tạm trú', 'kt3', 'đăng ký tạm trú', 'nơi tạm trú', 'mã số tạm trú',
+                'giấy tạm trú', 'đăng ký tạm vắng', 'tạm vắng', 'giấy tờ tạm trú',
+                'địa chỉ tạm trú', 'nơi ở hiện tại', 'đăng ký nơi ở'
+            ],
+            'administrative_procedures': [
+                'thủ tục', 'hồ sơ', 'giấy tờ', 'đăng ký', 'cấp phép', 'xin phép',
+                'xin cấp', 'thủ tục hành chính', 'nộp hồ sơ', 'bộ hồ sơ', 'hồ sơ giấy'
+            ]
+        };
+        // Check each category for matching keywords
+        for (const [category, keywords] of Object.entries(keywordMappings)) {
+            for (const keyword of keywords) {
+                if (msg.includes(keyword)) {
+                    return category; // Return the most specific category that matches
+                }
+            }
         }
-        if (msg.includes('vssid') || msg.includes('bảo hiểm xã hội') || msg.includes('bhxh') || msg.includes('sổ bhxh')) {
-            return 'vssid';
-        }
-        if (msg.includes('etax') || msg.includes('thuế') || msg.includes('khai thuế') || msg.includes('hóa đơn điện tử')) {
-            return 'etax';
-        }
-        if (msg.includes('dịch vụ công') || msg.includes('dichvucong') || msg.includes('nộp hồ sơ') || msg.includes('thủ tục hành chính')) {
-            return 'dichvucong';
-        }
-        if (msg.includes('nước máy') || msg.includes('sawaco') || msg.includes('cấp nước') || msg.includes('hóa đơn nước')) {
-            return 'sawaco';
-        }
-        if (msg.includes('điện') || msg.includes('evn') || msg.includes('hóa đơn điện') || msg.includes('điện lực')) {
-            return 'evnhcmc';
-        }
-        if (msg.includes('thanh toán') || msg.includes('momo') || msg.includes('vnpay') || msg.includes('zalopay') || msg.includes('ví điện tử')) {
-            return 'payment';
-        }
+
         return null;
     }
 
@@ -1179,6 +1236,30 @@ class BaseChatbotService {
             hash = hash & hash; // Convert to 32-bit integer
         }
         return Math.abs(hash).toString(36); // Convert to base36 for shorter string
+    }
+
+    // Post-process AI response to clean up irrelevant content
+    postProcessResponse(response, userMessage) {
+        // Remove banking-related content that's not relevant to administrative procedures
+        response = response.replace(/(Chuyển\s+qua\s+Techcombank|Cách\s+thanh toán\s+khác|Mobile\s+banking|ứng\s+dụng.*?chuyển\s+tiền|sao\s+chép.*?số.*?tài.*?khoản)/gi, '');
+
+        // Remove URL-like text that might be hallucinated
+        response = response.replace(/(https?:\/\/[^\s\n)]+)/g, '');
+
+        // Remove payment-related content that's not contextually relevant
+        if (!userMessage.toLowerCase().includes('thanh toán') &&
+            !userMessage.toLowerCase().includes('pay') &&
+            !userMessage.toLowerCase().includes('momo') &&
+            !userMessage.toLowerCase().includes('vnpay') &&
+            !userMessage.toLowerCase().includes('zalopay')) {
+            response = response.replace(/(Chuyển\s+tiền|thanh\s+toán|ví\s+điện\s+tử|mobile\s+banking|internet\s+banking)/gi, '');
+        }
+
+        // Remove duplicate or redundant content
+        response = response.replace(/\n\s*\n\s*\n/g, '\n\n'); // Remove excessive blank lines
+        response = response.trim();
+
+        return response;
     }
 
     // Cleanup method

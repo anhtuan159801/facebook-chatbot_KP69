@@ -62,11 +62,74 @@ class LocalRAGSystem {
       return '';
     }
 
-    return knowledgeDocs.map(doc => 
-      `[NGUỒN CHÍNH THỨC: ${doc.source_url || 'N/A'}]\n` +
-      `[BIỂU MẪU: ${doc.form_link || 'N/A'}]\n` +
-      `[THÔNG TIN: ${doc.content.substring(0, 800)}...]\n\n`
-    ).join('');
+    return knowledgeDocs.map(doc => {
+      // Extract structured information from the document content
+      const structuredInfo = this.extractStructuredInfo(doc.content);
+
+      let formatted = `🔍 THỦ TỤC HÀNH CHÍNH CHI TIẾT:\n`;
+      formatted += `📝 Mã thủ tục: ${structuredInfo.procedureCode || 'N/A'}\n`;
+      formatted += `📋 Tên thủ tục: ${structuredInfo.procedureName || 'N/A'}\n`;
+      formatted += `⏰ Thời hạn giải quyết: ${structuredInfo.processingTime || 'N/A'}\n`;
+      formatted += `💰 Phí, lệ phí: ${structuredInfo.fee || 'N/A'}\n`;
+      formatted += `🏢 Cơ quan thực hiện: ${structuredInfo.agency || 'N/A'}\n`;
+      formatted += `📋 Thành phần hồ sơ: ${structuredInfo.documents ? structuredInfo.documents.substring(0, 200) + '...' : 'N/A'}\n`;
+      formatted += `📋 Trình tự thực hiện: ${structuredInfo.procedureSteps ? structuredInfo.procedureSteps.substring(0, 300) + '...' : 'N/A'}\n`;
+      formatted += `🌐 Thông tin chi tiết: ${doc.source_url || 'N/A'}\n`;
+      formatted += `📄 Nội dung đầy đủ: ${doc.content.substring(0, 600)}...\n\n`;
+
+      return formatted;
+    }).join('');
+  }
+
+  /**
+   * Extract structured information from document content
+   */
+  extractStructuredInfo(content) {
+    const info = {};
+
+    // Extract procedure code
+    const codeMatch = content.match(/Mã thủ tục:\s*([^\n\r]+)/i);
+    if (codeMatch) {
+      info.procedureCode = codeMatch[1].trim();
+    }
+
+    // Extract procedure name
+    const nameMatch = content.match(/Tên thủ tục:\s*([^\n\r]+)/i);
+    if (nameMatch) {
+      info.procedureName = nameMatch[1].trim();
+    }
+
+    // Extract processing time
+    const timeMatch = content.match(/Thời hạn giải quyết:\s*([^\n\r]+)/i);
+    if (timeMatch) {
+      info.processingTime = timeMatch[1].trim();
+    }
+
+    // Extract fee
+    const feeMatch = content.match(/Phí, lệ phí:\s*([^\n\r]+)/i);
+    if (feeMatch) {
+      info.fee = feeMatch[1].trim();
+    }
+
+    // Extract agency
+    const agencyMatch = content.match(/Cơ quan thực hiện:\s*([^\n\r]+)/i);
+    if (agencyMatch) {
+      info.agency = agencyMatch[1].trim();
+    }
+
+    // Extract documents required
+    const docsMatch = content.match(/Thành phần hồ sơ:[\s\S]*?(?:\n\n|\nBước|\nCách|$)/i);
+    if (docsMatch) {
+      info.documents = docsMatch[0].replace(/Thành phần hồ sơ:/i, '').trim();
+    }
+
+    // Extract procedure steps
+    const stepsMatch = content.match(/Trình tự thực hiện:[\s\S]*?(?:\n\n|\nCách|$)/i);
+    if (stepsMatch) {
+      info.procedureSteps = stepsMatch[0].replace(/Trình tự thực hiện:/i, '').trim();
+    }
+
+    return info;
   }
 }
 

@@ -178,29 +178,35 @@ class BaseChatbotService {
                 }
             };
             
-            // Audio transcription with proper conversion
+            // Audio transcription with proper conversion and multi-language support
             this.transcribeAudio = async (audioBuffer, mimeType) => {
                 try {
                     console.log('🎵 Audio received, processing with Hugging Face...');
-                    
+
                     // Step 1: Try Hugging Face with proper audio conversion
                     try {
                         const huggingFaceAI = AIFactory.createHuggingFaceAI();
-                        
+
                         // Convert MP3 to WAV if needed
                         let processedBuffer = audioBuffer;
                         let processedMimeType = mimeType;
-                        
+
                         if (mimeType === 'audio/mp4' || mimeType === 'audio/mpeg') {
                             console.log('🔄 Converting MP3/MP4 to WAV for Hugging Face...');
                             // For now, use the buffer as-is but change content type
                             processedMimeType = 'audio/wav';
                         }
-                        
+
+                        // First transcribe without language specification, then determine language
                         const transcript = await huggingFaceAI.transcribeAudio(processedBuffer, processedMimeType);
                         console.log('✅ Hugging Face transcription successful');
+
+                        // Detect language of the transcript
+                        const detectedLanguage = this.detectMessageLanguage(transcript);
+                        console.log(`🌐 Detected language: ${detectedLanguage}`);
+
                         return transcript;
-                        
+
                     } catch (hfError) {
                         console.log('⚠️ Hugging Face failed, trying OpenRouter fallback...');
                         
@@ -585,6 +591,16 @@ class BaseChatbotService {
 
             const responseTime = Date.now() - startTime;
 
+            // MACHINE LEARNING: Continuous learning - track user interactions
+            await this.continuousLearningTracking(sender_psid, userMessage, text, detectedContext);
+
+            // ANOMALY DETECTION: Detect unusual or inappropriate queries
+            const isAnomaly = await this.detectAnomalies(userMessage);
+            if (isAnomaly) {
+                this.logger.warn(`Anomaly detected from user ${sender_psid}: ${userMessage}`);
+                // Continue normal processing but log for review
+            }
+
             if (text.includes('STEP')) {
                 const userSession = this.userSessions.get(sender_psid) || {};
                 userSession.currentJourney = { title: userMessage, fullGuide: text };
@@ -610,7 +626,10 @@ class BaseChatbotService {
                         const res = { text: chunks[i] };
                         if (isLast) {
                             const ext = this.extractSuggestions(text);
-                            await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, ext.suggestions);
+                            // Add FAQ suggestions based on user behavior and context
+                            const faqSuggestions = await this.generateFAQSuggestions(sender_psid, userMessage, detectedContext);
+                            const allSuggestions = [...ext.suggestions, ...faqSuggestions];
+                            await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, allSuggestions);
                         } else {
                             await this.callSendAPI(sender_psid, res);
                         }
@@ -618,7 +637,10 @@ class BaseChatbotService {
                     }
                 } else {
                     const ext = this.extractSuggestions(text);
-                    await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, ext.suggestions);
+                    // Add FAQ suggestions based on user behavior and context
+                    const faqSuggestions = await this.generateFAQSuggestions(sender_psid, userMessage, detectedContext);
+                    const allSuggestions = [...ext.suggestions, ...faqSuggestions];
+                    await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, allSuggestions);
                 }
 
                 // Save to both history systems
@@ -781,8 +803,20 @@ class BaseChatbotService {
 
             const responseTime = Date.now() - startTime;
 
+            // MACHINE LEARNING: Continuous learning - track user interactions
+            await this.continuousLearningTracking(sender_psid, `[Voice: ${transcript}]`, text, contextType);
+
+            // ANOMALY DETECTION: Detect unusual or inappropriate queries
+            const isAnomaly = await this.detectAnomalies(transcript);
+            if (isAnomaly) {
+                this.logger.warn(`Anomaly detected from user ${sender_psid} via voice: ${transcript}`);
+                // Continue normal processing but log for review
+            }
+
             const extractionResult = this.extractSuggestions(text);
-            const quickReplies = extractionResult.suggestions;
+            // Add FAQ suggestions based on user behavior and context for voice input
+            const faqSuggestions = await this.generateFAQSuggestions(sender_psid, transcript, contextType);
+            const allSuggestions = [...extractionResult.suggestions, ...faqSuggestions];
             text = extractionResult.cleanedText;
 
             if (text.length > 2000) {
@@ -791,7 +825,7 @@ class BaseChatbotService {
                     const isLast = i === chunks.length - 1;
                     const res = { text: chunks[i] };
                     if (isLast) {
-                        await this.callSendAPIWithRating(sender_psid, res, quickReplies);
+                        await this.callSendAPIWithRating(sender_psid, res, allSuggestions);
                     } else {
                         await this.callSendAPI(sender_psid, res);
                     }
@@ -799,7 +833,7 @@ class BaseChatbotService {
                 }
             } else {
                 const response = { "text": text };
-                await this.callSendAPIWithRating(sender_psid, response, quickReplies);
+                await this.callSendAPIWithRating(sender_psid, response, allSuggestions);
             }
 
             // Save to both history systems
@@ -1260,6 +1294,195 @@ class BaseChatbotService {
         response = response.trim();
 
         return response;
+    }
+
+    // Detect language of the message
+    detectMessageLanguage(message) {
+        // Check if message contains English characters predominantly
+        const vietnameseChars = message.match(/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/gi);
+        const englishChars = message.match(/[a-zA-Z]/g);
+
+        if (englishChars && (!vietnameseChars || vietnameseChars.length < englishChars.length * 0.3)) {
+            return 'en';
+        }
+        return 'vi';
+    }
+
+    // Generate FAQ suggestions based on user behavior and context
+    async generateFAQSuggestions(sender_psid, userMessage, context) {
+        try {
+            // Track popular queries for FAQ suggestions
+            if (!this.popularQueries) {
+                this.popularQueries = new Map();
+            }
+
+            // Increment count for current query
+            const queryKey = userMessage.toLowerCase().trim().substring(0, 30);
+            const currentCount = this.popularQueries.get(queryKey) || 0;
+            this.popularQueries.set(queryKey, currentCount + 1);
+
+            // Get top queries that might be relevant to current user
+            const topQueries = Array.from(this.popularQueries.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([query, count]) => query);
+
+            // Generate relevant FAQ based on context
+            let faqSuggestions = [];
+            switch(context) {
+                case 'VNeID':
+                    faqSuggestions = [
+                        "Cài đặt VNeID?",
+                        "Đăng ký tài khoản?",
+                        "Tích hợp giấy tờ?"
+                    ];
+                    break;
+                case 'ETAX':
+                    faqSuggestions = [
+                        "Khai thuế cá nhân?",
+                        "Nộp thuế online?",
+                        "Hoàn thuế?"
+                    ];
+                    break;
+                case 'VssID':
+                    faqSuggestions = [
+                        "Tra cứu BHXH?",
+                        "Cập nhật thông tin?",
+                        "Kê khai điện tử?"
+                    ];
+                    break;
+                case 'PUBLIC_SERVICE':
+                    faqSuggestions = [
+                        "Hồ sơ cần chuẩn bị?",
+                        "Nơi nộp hồ sơ?",
+                        "Thời gian xử lý?"
+                    ];
+                    break;
+                default:
+                    faqSuggestions = [
+                        "Thủ tục khác?",
+                        "Hướng dẫn chi tiết?",
+                        "Liên hệ hỗ trợ?"
+                    ];
+            }
+
+            // Add popular queries as suggestions if relevant
+            const popularSuggestions = topQueries
+                .filter(query => !faqSuggestions.some(faq =>
+                    faq.toLowerCase().includes(query.toLowerCase()) ||
+                    query.toLowerCase().includes(faq.toLowerCase())
+                ))
+                .slice(0, 2)
+                .map(query => query.charAt(0).toUpperCase() + query.slice(1));
+
+            return [...faqSuggestions, ...popularSuggestions].slice(0, 3);
+
+        } catch (error) {
+            console.error('Error generating FAQ suggestions:', error);
+            return [];
+        }
+    }
+
+    // Continuous learning - track user interactions to improve responses
+    async continuousLearningTracking(sender_psid, userMessage, aiResponse, context) {
+        try {
+            // Initialize learning data storage if not exists
+            if (!this.learningData) {
+                this.learningData = {
+                    queryContexts: new Map(),
+                    responseEffectiveness: new Map(),
+                    userPatterns: new Map()
+                };
+            }
+
+            // Track query-context relationships
+            const contextKey = context || 'general';
+            if (!this.learningData.queryContexts.has(contextKey)) {
+                this.learningData.queryContexts.set(contextKey, []);
+            }
+            const contextQueries = this.learningData.queryContexts.get(contextKey);
+            contextQueries.push({
+                query: userMessage,
+                response: aiResponse,
+                timestamp: Date.now()
+            });
+
+            // Keep only recent data (last 1000 entries per context)
+            if (contextQueries.length > 1000) {
+                this.learningData.queryContexts.set(contextKey, contextQueries.slice(-1000));
+            }
+
+            // Track user patterns
+            if (!this.learningData.userPatterns.has(sender_psid)) {
+                this.learningData.userPatterns.set(sender_psid, {
+                    contexts: [],
+                    queries: [],
+                    timestamp: Date.now()
+                });
+            }
+            const userPattern = this.learningData.userPatterns.get(sender_psid);
+            userPattern.contexts.push(context);
+            userPattern.queries.push(userMessage);
+
+            // Keep only recent user data
+            if (userPattern.contexts.length > 50) {
+                userPattern.contexts = userPattern.contexts.slice(-50);
+                userPattern.queries = userPattern.queries.slice(-50);
+            }
+
+        } catch (error) {
+            console.error('Error in continuous learning tracking:', error);
+        }
+    }
+
+    // Detect popular queries that are frequently asked
+    async detectPopularQueries() {
+        try {
+            if (!this.popularQueries) return [];
+
+            // Get queries that have been asked more than 5 times
+            const popular = Array.from(this.popularQueries.entries())
+                .filter(([query, count]) => count > 5)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10)
+                .map(([query, count]) => ({ query, count }));
+
+            return popular;
+        } catch (error) {
+            console.error('Error detecting popular queries:', error);
+            return [];
+        }
+    }
+
+    // Detect anomalies or unusual queries
+    async detectAnomalies(userMessage) {
+        try {
+            // Define patterns for anomalous queries
+            const anomalyPatterns = [
+                /(?:hack|crack|bypass|exploit|exploiting)/i,
+                /(?:spam|advertisement|advertising)/i,
+                /(?:scam|fraud|fake)/i,
+                /(?:virus|malware|malicious)/i,
+                /(?:login|password|credentials|account).*(?:steal|hack|access)/i,
+                /(?:click|link|website|url).*(?:suspicious|dangerous|scam)/i,
+                /^[\W\d_]+$/, // Only special characters and numbers
+                /^.{1,3}$/ // Very short messages that might be spam
+            ];
+
+            // Check if message matches any anomaly pattern
+            const isAnomalous = anomalyPatterns.some(pattern => pattern.test(userMessage));
+
+            // Additional check: too many consecutive special characters
+            if (!isAnomalous && (userMessage.match(/[^a-zA-Z0-9\s]/g) || []).length > userMessage.length * 0.7) {
+                return true;
+            }
+
+            return isAnomalous;
+
+        } catch (error) {
+            console.error('Error in anomaly detection:', error);
+            return false;
+        }
     }
 
     // Cleanup method

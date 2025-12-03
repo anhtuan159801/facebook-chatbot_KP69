@@ -738,7 +738,7 @@ class ProcedureScraper:
             p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
             # Text trước link
-            run1 = p.add_run("Để xem chi tiết thủ tục hành chính, vui lòng truy cập link sau: ")
+            run1 = p.add_run("Để xem chi tiết thủ tục hành chính và tải các biểu mẫu cần thiết, vui lòng truy cập link sau: ")
             run1.font.size = Pt(12)
             run1.font.name = 'Times New Roman'
 

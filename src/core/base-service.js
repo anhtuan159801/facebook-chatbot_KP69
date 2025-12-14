@@ -955,22 +955,39 @@ class BaseChatbotService {
                     await supabase.from('users').insert({ user_id: userId });
                 }
 
-                // Get recent conversation history (try the new chat_history table first, then conversations table)
+                // Get recent conversation history (try the user_chat_history table first, then fallback to conversations table)
                 let conversations = [];
                 let error = null;
 
-                // Try to get from chat_history table (used by ChatHistoryManager)
-                const { data: chatHistory, error: chatHistoryError } = await supabase
-                    .from('chat_history')
-                    .select('message_content, message_type, created_at')
-                    .eq('user_id', userId)
+                // Try to get from user_chat_history table (our primary chat history table)
+                const { data: userChatHistory, error: userChatHistoryError } = await supabase
+                    .from('user_chat_history')
+                    .select('user_request as message_content, chatbot_response, created_at')
+                    .eq('facebook_user_id', userId)
                     .order('created_at', { ascending: false })
                     .limit(20);
 
-                if (!chatHistoryError) {
-                    conversations = chatHistory;
+                if (!userChatHistoryError) {
+                    // Convert user_chat_history format to the expected format
+                    conversations = [];
+                    userChatHistory.forEach(item => {
+                        if (item.message_content) {
+                            conversations.push({
+                                message_content: item.message_content,
+                                message_type: 'user',
+                                created_at: item.created_at
+                            });
+                        }
+                        if (item.chatbot_response) {
+                            conversations.push({
+                                message_content: item.chatbot_response,
+                                message_type: 'assistant',
+                                created_at: item.created_at
+                            });
+                        }
+                    });
                 } else {
-                    // Fallback to conversations table if chat_history doesn't exist or has issues
+                    // Fallback to conversations table if user_chat_history doesn't exist or has issues
                     const { data: convHistory, error: convError } = await supabase
                         .from('conversations')
                         .select('message_content, message_type, created_at')

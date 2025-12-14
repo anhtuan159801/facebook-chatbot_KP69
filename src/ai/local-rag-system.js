@@ -37,13 +37,13 @@ class LocalRAGSystem {
         return await this.getRelevantKnowledgeFromFileSystem(userQuery, category);
       }
 
-      // Use text search on the clean knowledge base table with full procedure content
+      // Use text search on the government procedures knowledge base table with full procedure content
       let query = this.supabase
-        .from('government_procedures_knowledge')
+        .from('government_procedures_knowledge_base')
         .select(`
           id,
-          procedure_code,
-          full_procedure_content,
+          procedure_code as procedure_code,
+          procedure_content as full_procedure_content,
           procedure_title,
           ministry_name,
           source_url,
@@ -118,12 +118,12 @@ class LocalRAGSystem {
       return ProfessionalResponseFormatter.formatStructuredResponse(userQuery, knowledgeDocs);
     }
 
-    // Original formatting for non-administrative content
+    // Original formatting for non-administrative content - now connecting to Supabase data
     return knowledgeDocs.map(doc => {
       // Extract structured information from the document content
-      const structuredInfo = this.extractStructuredInfo(doc.content);
+      const structuredInfo = this.extractStructuredInfo(doc.full_procedure_content);
       // Extract URLs from the document content
-      const urls = this.extractUrlsFromContent(doc.content);
+      const urls = this.extractUrlsFromContent(doc.full_procedure_content);
 
       let formatted = `🔍 THỦ TỤC HÀNH CHÍNH CHI TIẾT:\n`;
       formatted += `📝 Mã thủ tục: ${doc.procedure_code || structuredInfo.procedureCode || 'N/A'}\n`;
@@ -151,7 +151,7 @@ class LocalRAGSystem {
         }
       } else {
         // Use the source_url from the doc if available, otherwise try to extract from content
-        const primaryUrl = doc.source_url || this.extractUrlFromContent(doc.content);
+        const primaryUrl = doc.source_url || this.extractUrlFromContent(doc.full_procedure_content);
         if (primaryUrl) {
           formatted += `🌐 Thông tin chi tiết: ${primaryUrl}\n`;
         }
@@ -162,7 +162,7 @@ class LocalRAGSystem {
         formatted += `📋 Form link: ${doc.metadata.form_link}\n`;
       }
 
-      formatted += `📄 Nội dung đầy đủ: ${doc.content.substring(0, 600)}...\n\n`;
+      formatted += `📄 Nội dung đầy đủ: ${doc.full_procedure_content.substring(0, 600)}...\n\n`;
 
       return formatted;
     }).join('');
@@ -182,6 +182,11 @@ class LocalRAGSystem {
    * Extract structured information from document content
    */
   extractStructuredInfo(content) {
+    // Handle case where content is null or undefined
+    if (!content) {
+      return {};
+    }
+
     const info = {};
 
     // Extract procedure code

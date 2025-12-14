@@ -343,7 +343,7 @@ class ProfessionalResponseFormatter {
     }
 
     const doc = knowledgeDocs[0];
-    const structuredInfo = this.extractStructuredInfo(doc.content);
+    const structuredInfo = this.extractStructuredInfo(doc.full_procedure_content);
 
     let response = `HƯỚNG DẪN THỦ TỤC XÓA TẠM TRÚ 📋\n\n`;
 
@@ -384,7 +384,7 @@ class ProfessionalResponseFormatter {
       response += `🌐 CĂN CỨ PHÁP LÝ: ${structuredInfo.legalBasis}\n`;
     } else {
       // Look for legal basis in content
-      const legalMatch = doc.content.match(/(?:Căn cứ pháp lý|Cơ sở pháp lý|Theo luật|Luật áp dụng)[^\n\r]*\n+([^\n\r]+)/i);
+      const legalMatch = doc.full_procedure_content.match(/(?:Căn cứ pháp lý|Cơ sở pháp lý|Theo luật|Luật áp dụng)[^\n\r]*\n+([^\n\r]+)/i);
       if (legalMatch) {
         response += `🌐 CĂN CỨ PHÁP LÝ: ${legalMatch[1].trim()}\n`;
       } else {
@@ -399,7 +399,7 @@ class ProfessionalResponseFormatter {
     } else {
       // Look for links in the content for "LINK CHI TIẾT" or similar
       const linkPattern = /(?:LINK CHI TIẾT|Link chi tiết|https?:\/\/[^\s<>"'`]+)/i;
-      const linkMatch = doc.content.match(/(https?:\/\/[^\s<>"'`]+)/i);
+      const linkMatch = doc.full_procedure_content.match(/(https?:\/\/[^\s<>"'`]+)/i);
       if (linkMatch) {
         response += `🔗 LINK CHI TIẾT: ${linkMatch[1]}\n`;
       } else if (doc.metadata && doc.metadata.form_link) {
@@ -416,14 +416,14 @@ class ProfessionalResponseFormatter {
       response += `📋 BIỂU MẪU: ${structuredInfo.formDescription}\n`;
     } else {
       // Look for form information in content
-      const formMatch = doc.content.match(/Biểu mẫu[^\n\r]*\n+([^\n\r]+)/i);
+      const formMatch = doc.full_procedure_content.match(/Biểu mẫu[^\n\r]*\n+([^\n\r]+)/i);
       if (formMatch) {
         response += `📋 BIỂU MẪU: ${formMatch[1].trim()}\n`;
       }
     }
 
-    if (doc.content && doc.content.length > 50) {
-      response += `\n📋 NỘI DUNG CHI TIẾT:\n${doc.content.substring(0, 800)}...\n`;
+    if (doc.full_procedure_content && doc.full_procedure_content.length > 50) {
+      response += `\n📋 NỘI DUNG CHI TIẾT:\n${doc.full_procedure_content.substring(0, 800)}...\n`;
     }
 
     // Add suggestions

@@ -31,7 +31,7 @@ async function testSystem() {
 
         // Test the formatKnowledgeForPrompt method with a query
         const mockKnowledgeDocs = [{
-            content: "Mã thủ tục: C04\nTên thủ tục: XÓA TẠM TRÚ (HỦY ĐĂNG KÝ TẠM TRÚ)\nCơ quan: Cảnh sát/Đoàn công tác dân cư (Bộ Công an)\nThời hạn: 1-3 ngày làm việc\nPhí lệ phí: 0 VNĐ\nThành phần hồ sơ: - Giấy đề nghị hủy đăng ký tạm trú - CMND/CCCD/Passport - Giấy tạm trú (nếu còn)\nTrình tự thực hiện: 1. Nộp hồ sơ tại cơ quan đăng ký tạm trú 2. Nhận biên nhận 3. Đến nhận kết quả sau thời hạn\nCăn cứ pháp lý: Luật Cư trú\nLink chi tiết: https://thutuc.dichvucong.gov.vn/p/home/dvc-tthc-thu-tuc-hanh-chinh-chi-tiet.html?ma_thu_tuc=373812",
+            full_procedure_content: "Mã thủ tục: C04\nTên thủ tục: XÓA TẠM TRÚ (HỦY ĐĂNG KÝ TẠM TRÚ)\nCơ quan: Cảnh sát/Đoàn công tác dân cư (Bộ Công an)\nThời hạn: 1-3 ngày làm việc\nPhí lệ phí: 0 VNĐ\nThành phần hồ sơ: - Giấy đề nghị hủy đăng ký tạm trú - CMND/CCCD/Passport - Giấy tạm trú (nếu còn)\nTrình tự thực hiện: 1. Nộp hồ sơ tại cơ quan đăng ký tạm trú 2. Nhận biên nhận 3. Đến nhận kết quả sau thời hạn\nCăn cứ pháp lý: Luật Cư trú\nLink chi tiết: https://thutuc.dichvucong.gov.vn/p/home/dvc-tthc-thu-tuc-hanh-chinh-chi-tiet.html?ma_thu_tuc=373812",
             procedure_code: 'C04',
             procedure_title: 'XÓA TẠM TRÚ (HỦY ĐĂNG KÝ TẠM TRÚ)',
             ministry_name: 'Bộ Công an',

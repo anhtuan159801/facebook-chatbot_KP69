@@ -110,77 +110,130 @@ class ProfessionalResponseFormatter {
       }
     }
 
-    // If no procedure name found, extract a reasonable title from content
+    // If no procedure name found, extract from the specific format in your dataset
     if (!info.procedureName) {
-      // Extract first sentence/phrase that looks like a title
-      const sentences = content.split(/[.\n\r]/);
-      for (const sentence of sentences) {
-        const trimmed = sentence.trim();
-        if (trimmed.length > 10 && trimmed.length < 200 && !trimmed.toLowerCase().includes('theo')) {
-          info.procedureName = trimmed;
+      // Look for the format like "Hướng Dẫn Thủ Tục: [Tên thủ tục]"
+      const headerPattern = /(?:Hướng Dẫn Thủ Tục|Thủ Tục|Tên Thủ Tục):\s*([^\n\r]+)/i;
+      const headerMatch = content.match(headerPattern);
+      if (headerMatch) {
+        info.procedureName = headerMatch[1].trim();
+      } else {
+        // Extract first substantial text that looks like a procedure name
+        const lines = content.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          // Skip lines that are field labels like "Cách thức thực hiện", "Thành phần hồ sơ", etc.
+          if (trimmed && !trimmed.match(/^(Cách thức thực hiện|Hình thức nộp|Thời hạn giải quyết|Phí, lệ phí|Thành phần hồ sơ|Trình tự thực hiện|Cơ quan thực hiện|Yêu cầu, điều kiện|Thủ tục hành chính liên quan)/i)) {
+            // If it looks like a title (doesn't contain typical field markers and is substantial)
+            if (trimmed.length > 10 && trimmed.length < 200) {
+              info.procedureName = trimmed;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Extract processing time - look specifically for "Thời hạn giải quyết" section
+    const timeSectionPattern = /Thời hạn giải quyết[^\n]*\n+([^\n]+)/i;
+    const timeSectionMatch = content.match(timeSectionPattern);
+    if (timeSectionMatch) {
+      info.processingTime = timeSectionMatch[1].trim();
+    } else {
+      // Fallback to general time patterns
+      const timePatterns = [
+        /(?:Thời hạn|Thời gian|Thời hạn giải quyết):\s*([^\n\r]+)/i,
+        /(?:Time|Thời gian:)\s*([^\n\r]+)/i,
+        /(?:(?:trong)?\s*vòng\s*)([0-9]+\s*(?:ngày|tháng|tuần))/i,
+        /([0-9]+\s*(?:ngày|tháng|tuần)\s*(?:làm việc)?)/i
+      ];
+
+      for (const pattern of timePatterns) {
+        const match = content.match(pattern);
+        if (match) {
+          info.processingTime = match[1].trim();
           break;
         }
       }
     }
 
-    // Extract processing time
-    const timePatterns = [
-      /(?:Thời hạn|Thời gian|Thời hạn giải quyết):\s*([^\n\r]+)/i,
-      /(?:Time|Thời gian:)\s*([^\n\r]+)/i,
-      /(?:(?:trong)?\s*vòng\s*)([0-9]+\s*(?:ngày|tháng|tuần))/i,
-      /([0-9]+\s*(?:ngày|tháng|tuần)\s*(?:làm việc)?)/i
-    ];
+    // Extract fee information - look for the fee section
+    const feeSectionPattern = /Phí, lệ phí[^\n]*\n+((?:.|\n)*?)(?:\n[A-Z][a-z]+|$)/i;
+    const feeSectionMatch = content.match(feeSectionPattern);
+    if (feeSectionMatch) {
+      info.fee = feeSectionMatch[1].trim();
+    } else {
+      // Fallback to general fee patterns
+      const feePatterns = [
+        /(?:Phí|Lệ phí|Phí lệ phí):\s*([^\n\r]+)/i,
+        /(?:Cost|Chi phí):\s*([^\n\r]+)/i,
+        /(miễn phí|[0-9.,]+\s*vnđ|0 vnđ|không thu phí)/i
+      ];
 
-    for (const pattern of timePatterns) {
-      const match = content.match(pattern);
-      if (match) {
-        info.processingTime = match[1].trim();
-        break;
+      for (const pattern of feePatterns) {
+        const match = content.match(pattern);
+        if (match) {
+          info.fee = match[1].trim();
+          break;
+        }
       }
     }
 
-    // Extract fee
-    const feePatterns = [
-      /(?:Phí|Lệ phí|Phí lệ phí):\s*([^\n\r]+)/i,
-      /(?:Cost|Chi phí):\s*([^\n\r]+)/i,
-      /(miễn phí|[0-9.,]+\s*vnđ|0 vnđ|không thu phí)/i
-    ];
+    // Extract documents required - look for "Thành phần hồ sơ" section
+    const docsSectionPattern = /Thành phần hồ sơ[^\n\r]*\n+((?:.|\n)*?)(?:\n[A-Z][a-z]+|$)/i;
+    const docsSectionMatch = content.match(docsSectionPattern);
+    if (docsSectionMatch) {
+      info.documents = docsSectionMatch[1].trim();
+    } else {
+      // Fallback to general patterns
+      const docPatterns = [
+        /(?:Thành phần hồ sơ|Các loại giấy tờ|Giấy tờ cần nộp):\s*([^.]*?)(?:\n\n|\n[a-z]|$)/i,
+        /(?:Hồ sơ bao gồm|Các giấy tờ cần|Giấy tờ nộp):\s*([^.]*?)(?:\n\n|\n[a-z]|$)/i,
+        /(?:Documents|Hồ sơ gồm):\s*([^.]*?)(?:\n\n|\n[a-z]|$)/i
+      ];
 
-    for (const pattern of feePatterns) {
-      const match = content.match(pattern);
-      if (match) {
-        info.fee = match[1].trim();
-        break;
+      for (const pattern of docPatterns) {
+        const match = content.match(pattern);
+        if (match && match[1].length > 10) {
+          info.documents = match[1].trim();
+          break;
+        }
       }
     }
 
-    // Extract documents required (more comprehensive)
-    const docPatterns = [
-      /(?:Thành phần hồ sơ|Các loại giấy tờ|Giấy tờ cần nộp):\s*([^.]*?)(?:\n\n|\n[a-z]|$)/i,
-      /(?:Hồ sơ bao gồm|Các giấy tờ cần|Giấy tờ nộp):\s*([^.]*?)(?:\n\n|\n[a-z]|$)/i,
-      /(?:Documents|Hồ sơ gồm):\s*([^.]*?)(?:\n\n|\n[a-z]|$)/i
-    ];
+    // Extract procedure steps - look for "Trình tự thực hiện" section
+    const stepsSectionPattern = /Trình tự thực hiện[^\n\r]*\n+((?:.|\n)*?)(?:\n[A-Z][a-z]+|$)/i;
+    const stepsSectionMatch = content.match(stepsSectionPattern);
+    if (stepsSectionMatch) {
+      info.procedureSteps = stepsSectionMatch[1].trim();
+    } else {
+      // Fallback to general patterns
+      const stepsPatterns = [
+        /(?:Trình tự thực hiện|Các bước thực hiện|Cách thực hiện):\s*([\s\S]*?)(?:\n\n|\nMọi|\nCăn|\n$)/i,
+        /(?:Steps|Các bước|Quy trình):\s*([\s\S]*?)(?:\n\n|\nMọi|\nCăn|\n$)/i,
+        /(?:Bước 1|1\.\s|Bước đầu tiên)[\s\S]*?(?:\n\n|$)/i
+      ];
 
-    for (const pattern of docPatterns) {
-      const match = content.match(pattern);
-      if (match && match[1].length > 10) {
-        info.documents = match[1].trim();
-        break;
+      for (const pattern of stepsPatterns) {
+        const match = content.match(pattern);
+        if (match && match[1].length > 20) {
+          info.procedureSteps = match[1].trim();
+          break;
+        }
       }
     }
 
-    // Extract procedure steps (more comprehensive)
-    const stepsPatterns = [
-      /(?:Trình tự thực hiện|Các bước thực hiện|Cách thực hiện):\s*([\s\S]*?)(?:\n\n|\nMọi|\nCăn|\n$)/i,
-      /(?:Steps|Các bước|Quy trình):\s*([\s\S]*?)(?:\n\n|\nMọi|\nCăn|\n$)/i,
-      /(?:Bước 1|1\.\s|Bước đầu tiên)[\s\S]*?(?:\n\n|$)/i
-    ];
-
-    for (const pattern of stepsPatterns) {
-      const match = content.match(pattern);
-      if (match && match[1].length > 20) {
-        info.procedureSteps = match[1].trim();
-        break;
+    // Extract agency - look for "Cơ quan thực hiện" section
+    const agencySectionPattern = /Cơ quan thực hiện[^\n\r]*\n+((?:.|\n)*?)(?:\n[A-Z][a-z]+|$)/i;
+    const agencySectionMatch = content.match(agencySectionPattern);
+    if (agencySectionMatch) {
+      info.agency = agencySectionMatch[1].trim();
+    } else {
+      // Fallback to general pattern
+      const agencyPattern = /(?:Cơ quan thực hiện|Cơ quan có thẩm quyền):\s*([^\n\r]+)/i;
+      const agencyMatch = content.match(agencyPattern);
+      if (agencyMatch) {
+        info.agency = agencyMatch[1].trim();
       }
     }
 
@@ -293,68 +346,86 @@ class ProfessionalResponseFormatter {
     const structuredInfo = this.extractStructuredInfo(doc.content);
 
     let response = `HƯỚNG DẪN THỦ TỤC XÓA TẠM TRÚ 📋\n\n`;
-    
-    response += `🔍 TÊN THỦ TỤC: ${structuredInfo.procedureName || 'XÓA TẠM TRÚ (HỦY ĐĂNG KÝ TẠM TRÚ)'}\n`;
-    response += `🏢 CƠ QUAN: ${doc.ministry_name || 'Cảnh sát/Đoàn công tác dân cư (Bộ Công an)'}\n`;
-    response += `📋 MÃ THỦ TỤC: ${doc.procedure_code || structuredInfo.procedureCode || 'C04 (theo cơ sở tri thức từ Bộ Công an)'}\n`;
-    response += `⏰ THỜI HẠN: ${structuredInfo.processingTime || '1-3 ngày làm việc (tùy theo quy định địa phương)'}\n`;
-    response += `💰 PHÍ/ LỆ PHÍ: ${structuredInfo.fee || '0 VNĐ (hoặc phí xử lý hồ sơ nếu có)'}\n`;
-    
-    // More detailed document requirements
+
+    response += `🔍 TÊN THỦ TỤC: ${structuredInfo.procedureName || doc.procedure_title || 'XÓA TẠM TRÚ (HỦY ĐĂNG KÝ TẠM TRÚ)'}\n`;
+    response += `🏢 CƠ QUAN: ${doc.ministry_name || structuredInfo.agency || 'Cục Quản lý Hộ chiếu & Định danh / Công an Xã'}\n`;
+    response += `📋 MÃ THỦ TỤC: ${doc.procedure_code || structuredInfo.procedureCode || 'Thông tin chưa có trong cơ sở tri thức'}\n`;
+    response += `⏰ THỜI HẠN: ${structuredInfo.processingTime || '2–3 ngày làm việc (theo quy định địa phương)'}\n`;
+    response += `💰 PHÍ/ LỆ PHÍ: ${structuredInfo.fee || 'Thông tin chưa có trong cơ sở tri thức'}\n`;
+
+    // Document requirements based on actual content
     if (structuredInfo.documents) {
       response += `📄 THÀNH PHẦN HỒ SƠ:\n${structuredInfo.documents}\n`;
     } else {
-      response += `📄 THÀNH PHẦN HỒ SƠ:\n`;
-      response += `- Giấy đề nghị hủy đăng ký tạm trú (được điền tại cơ quan)\n`;
-      response += `- CMND/CCCD/Passport (định danh người)\n`;
-      response += `- Giấy tạm trú (nếu còn)\n`;
-      response += `- Giấy tờ chứng minh chuyển đổi địa chỉ (nếu đã chuyển)\n`;
-      response += `- Biên nhận chuyển đổi (nếu đã nộp)\n`;
+      // Extract from specific content structure if available
+      const documentsMatch = doc.content.match(/Thành phần hồ sơ[^\n\r]*\n+((?:.|\n)*?)(?:\n[A-Z][a-z]+|$)/i);
+      if (documentsMatch) {
+        response += `📄 THÀNH PHẦN HỒ SƠ:\n${documentsMatch[1].trim()}\n`;
+      } else {
+        response += `📄 THÀNH PHẦN HỒ SƠ: Thông tin chưa có trong cơ sở tri thức\n`;
+      }
     }
-    
-    // Detailed procedure steps
+
+    // Detailed procedure steps based on actual content
     if (structuredInfo.procedureSteps) {
       response += `📝 TRÌNH TỰ THỰC HIỆN:\n${structuredInfo.procedureSteps}\n`;
     } else {
-      response += `📝 TRÌNH TỰ THỰC HIỆN:\n`;
-      response += `1. Chuẩn bị hồ sơ đầy đủ theo danh sách trên.\n`;
-      response += `2. Nộp hồ sơ tại Cảnh sát hoặc Đoàn công tác dân cư nơi bạn đăng ký tạm trú.\n`;
-      response += `3. Nhận biên nhận nộp hồ sơ và mã số hồ sơ (nếu có).\n`;
-      response += `4. Đợi thời hạn xử lý (1-3 ngày làm việc).\n`;
-      response += `5. Nhận xác nhận xóa tạm trú (thư/biên nhận).\n`;
+      // Extract from specific content structure if available
+      const stepsMatch = doc.content.match(/Trình tự thực hiện[^\n\r]*\n+((?:.|\n)*?)(?:\n[A-Z][a-z]+|$)/i);
+      if (stepsMatch) {
+        response += `📝 TRÌNH TỰ THỰC HIỆN:\n${stepsMatch[1].trim()}\n`;
+      } else {
+        response += `📝 TRÌNH TỰ THỰC HIỆN: Thông tin chưa có trong cơ sở tri thức\n`;
+      }
     }
-    
+
     // Legal basis
     if (structuredInfo.legalBasis) {
       response += `🌐 CĂN CỨ PHÁP LÝ: ${structuredInfo.legalBasis}\n`;
     } else {
-      response += `🌐 CĂN CỨ PHÁP LÝ: Luật Dân cư, Luật Thông tin và Truyền thông (định quy về đăng ký và hủy đăng ký tạm trú).\n`;
+      // Look for legal basis in content
+      const legalMatch = doc.content.match(/(?:Căn cứ pháp lý|Cơ sở pháp lý|Theo luật|Luật áp dụng)[^\n\r]*\n+([^\n\r]+)/i);
+      if (legalMatch) {
+        response += `🌐 CĂN CỨ PHÁP LÝ: ${legalMatch[1].trim()}\n`;
+      } else {
+        response += `🌐 CĂN CỨ PHÁP LÝ: Luật Cư trú, Nghị định 20/2019/NĐ-CP (đối với người nước ngoài), Luật Quản lý Định danh 2021\n`;
+      }
     }
-    
-    // Official link
+
+    // Official link - try to extract from content or metadata
     const officialLink = this.extractOfficialLink(doc);
     if (officialLink) {
       response += `🔗 LINK CHI TIẾT: ${officialLink}\n`;
     } else {
-      // Use the form link from metadata if available
-      if (doc.metadata && doc.metadata.form_link) {
+      // Look for links in the content for "LINK CHI TIẾT" or similar
+      const linkPattern = /(?:LINK CHI TIẾT|Link chi tiết|https?:\/\/[^\s<>"'`]+)/i;
+      const linkMatch = doc.content.match(/(https?:\/\/[^\s<>"'`]+)/i);
+      if (linkMatch) {
+        response += `🔗 LINK CHI TIẾT: ${linkMatch[1]}\n`;
+      } else if (doc.metadata && doc.metadata.form_link) {
         response += `🔗 LINK CHI TIẾT: ${doc.metadata.form_link}\n`;
       } else {
-        response += `🔗 LINK CHI TIẾT: Để xem chi tiết thủ tục hành chính và tải biểu mẫu, vui lòng truy cập link sau: https://thutuc.dichvucong.gov.vn/p/home/dvc-tthc-thu-tuc-hanh-chinh-chi-tiet.html?ma_thu_tuc=373812\n`;
+        response += `🔗 LINK CHI TIẾT: Vui lòng tra cứu trên Cổng Dịch vụ công Quốc gia để có thông tin chính xác nhất\n`;
       }
     }
-    
+
     // Form information
     if (structuredInfo.formLink) {
       response += `📋 BIỂU MẪU: ${structuredInfo.formLink}\n`;
     } else if (structuredInfo.formDescription) {
       response += `📋 BIỂU MẪU: ${structuredInfo.formDescription}\n`;
+    } else {
+      // Look for form information in content
+      const formMatch = doc.content.match(/Biểu mẫu[^\n\r]*\n+([^\n\r]+)/i);
+      if (formMatch) {
+        response += `📋 BIỂU MẪU: ${formMatch[1].trim()}\n`;
+      }
     }
-    
+
     if (doc.content && doc.content.length > 50) {
       response += `\n📋 NỘI DUNG CHI TIẾT:\n${doc.content.substring(0, 800)}...\n`;
     }
-    
+
     // Add suggestions
     response += `\nGỢI Ý:\n`;
     response += `• Hồ sơ cần chuẩn bị gồm những gì?\n`;

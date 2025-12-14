@@ -1,88 +1,45 @@
 #!/usr/bin/env node
 
 /**
- * Render.com Startup Script
- * 
- * This script starts the chatbot system with keep-alive functionality
- * specifically designed for Render.com's free tier limitations.
+ * Render Startup Script with Keep-Alive
+ * This script starts the server and implements keep-alive for Render deployment
  */
 
-const { spawn } = require('child_process');
-const path = require('path');
+console.log('🚀 Starting Router Hug Bot with Keep-Alive support...');
 
-console.log('🚀 Starting Facebook Chatbot on Render.com...');
+// Set environment variables for production
+process.env.NODE_ENV = 'production';
+process.env.KEEP_ALIVE_ENABLED = 'true';
 
-// Environment variables
-const PORT = process.env.PORT || 10000;
-const APP_URL = process.env.APP_URL || `https://your-app-name.onrender.com`;
+// Set default values if not provided
+process.env.PORT = process.env.PORT || 10000;
+process.env.HOST = process.env.HOST || '0.0.0.0';
 
-console.log(`📡 Port: ${PORT}`);
-console.log(`🌐 App URL: ${APP_URL}`);
+// Log startup info
+console.log('🔧 Configuration:');
+console.log(`   PORT: ${process.env.PORT}`);
+console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`   KEEP_ALIVE_ENABLED: ${process.env.KEEP_ALIVE_ENABLED}`);
+console.log(`   HOST: ${process.env.HOST}`);
 
-// Start the main application
-const mainApp = spawn('node', ['src/core/load-balancer/load_balancer.js'], {
-    stdio: 'inherit',
-    env: {
-        ...process.env,
-        PORT: PORT
-    }
-});
-
-// Start keep-alive service
-const keepAlive = spawn('node', ['scripts/keep-alive.js'], {
-    stdio: 'inherit',
-    env: {
-        ...process.env,
-        APP_URL: APP_URL,
-        LOG_LEVEL: 'INFO',
-        ENABLE_DETAILED_LOGS: 'true'
-    }
-});
-
-// Handle process exits
-function handleExit(signal) {
-    console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
-    
-    mainApp.kill(signal);
-    keepAlive.kill(signal);
-    
-    setTimeout(() => {
-        console.log('💀 Force exit after timeout');
-        process.exit(0);
-    }, 10000);
+// Start the main server
+try {
+  // Import and start the main server
+  const server = require('../src/core/server_copy.js');
+  console.log('✅ Router Hug Bot server started successfully!');
+  
+  // Keep the process alive
+  process.on('SIGINT', () => {
+    console.log('\n👋 Gracefully shutting down...');
+    process.exit(0);
+  });
+  
+  process.on('SIGTERM', () => {
+    console.log('\n👋 Gracefully shutting down...');
+    process.exit(0);
+  });
+  
+} catch (error) {
+  console.error('❌ Error starting server:', error);
+  process.exit(1);
 }
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-    console.error('💥 Uncaught Exception:', error);
-    handleExit('SIGTERM');
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-    handleExit('SIGTERM');
-});
-
-// Handle signals
-process.on('SIGTERM', () => handleExit('SIGTERM'));
-process.on('SIGINT', () => handleExit('SIGINT'));
-
-// Monitor child processes
-mainApp.on('exit', (code, signal) => {
-    console.log(`📱 Main app exited with code ${code} and signal ${signal}`);
-    if (code !== 0) {
-        console.log('🔄 Restarting main app...');
-        // Restart logic could be added here
-    }
-});
-
-keepAlive.on('exit', (code, signal) => {
-    console.log(`💓 Keep-alive service exited with code ${code} and signal ${signal}`);
-    if (code !== 0) {
-        console.log('🔄 Restarting keep-alive service...');
-        // Restart logic could be added here
-    }
-});
-
-console.log('✅ Both services started successfully!');
-console.log('📊 Monitoring processes...');

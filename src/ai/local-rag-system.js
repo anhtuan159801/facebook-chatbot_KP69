@@ -32,27 +32,70 @@ class LocalRAGSystem {
       const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
       if (!supabaseUrl || !supabaseAnonKey) {
-        return []; // Return empty array when Supabase is not configured
+        // Fallback to using your existing knowledge directory structure
+        return await this.getRelevantKnowledgeFromFileSystem(userQuery, category);
       }
 
-      const queryEmbedding = await this.embeddings.generateEmbedding(userQuery);
+      // Use text search on the clean knowledge base table with full procedure content
+      let query = this.supabase
+        .from('government_procedures_knowledge')
+        .select(`
+          id,
+          procedure_code,
+          full_procedure_content,
+          procedure_title,
+          ministry_name,
+          source_url
+        `)
+        .textSearch('full_procedure_content', userQuery, {
+          type: 'websearch',
+          config: 'english'
+        })
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-      const { data: relevantDocs, error } = await this.supabase
-        .rpc('match_documents', {
-          query_embedding: queryEmbedding,
-          match_count: 5,
-          filter_category: category
-        });
+      if (category) {
+        // If category is provided, filter by ministry name
+        query = query.eq('ministry_name', category);
+      }
+
+      const { data: relevantDocs, error } = await query;
 
       if (error) {
         console.error('Error searching knowledge:', error);
-        return [];
+        // Fallback to filesystem search
+        return await this.getRelevantKnowledgeFromFileSystem(userQuery, category);
       }
 
-      // Filter results by similarity threshold (lower = more similar)
-      return relevantDocs.filter(doc => doc.similarity < 0.6);
+      // Format results to match the expected structure
+      const formattedResults = relevantDocs.map(doc => ({
+        id: doc.id,
+        content: doc.full_procedure_content,
+        similarity: 0.5, // Placeholder similarity score
+        doc_id: doc.id,
+        source_url: doc.source_url,
+        ministry_name: doc.ministry_name,
+        procedure_code: doc.procedure_code,
+        procedure_title: doc.procedure_title
+      }));
+
+      return formattedResults;
     } catch (error) {
       console.error('Error in RAG system:', error);
+      // Fallback to filesystem search
+      return await this.getRelevantKnowledgeFromFileSystem(userQuery, category);
+    }
+  }
+
+  // Updated to use Supabase as the primary knowledge source
+  async getRelevantKnowledgeFromFileSystem(userQuery, category = null) {
+    try {
+      // This method is now deprecated since we use Supabase as primary source
+      // However, we keep it for backward compatibility if needed
+      console.warn('File system fallback is being used - this should not happen in production');
+      return [];
+    } catch (error) {
+      console.error('Error in filesystem RAG fallback:', error);
       return [];
     }
   }
@@ -69,11 +112,11 @@ class LocalRAGSystem {
       const urls = this.extractUrlsFromContent(doc.content);
 
       let formatted = `🔍 THỦ TỤC HÀNH CHÍNH CHI TIẾT:\n`;
-      formatted += `📝 Mã thủ tục: ${structuredInfo.procedureCode || 'N/A'}\n`;
-      formatted += `📋 Tên thủ tục: ${structuredInfo.procedureName || 'N/A'}\n`;
+      formatted += `📝 Mã thủ tục: ${doc.procedure_code || structuredInfo.procedureCode || 'N/A'}\n`;
+      formatted += `📋 Tên thủ tục: ${doc.procedure_title || structuredInfo.procedureName || 'N/A'}\n`;
+      formatted += `🏢 Bộ/Ngành: ${doc.ministry_name || 'N/A'}\n`;
       formatted += `⏰ Thời hạn giải quyết: ${structuredInfo.processingTime || 'N/A'}\n`;
       formatted += `💰 Phí, lệ phí: ${structuredInfo.fee || 'N/A'}\n`;
-      formatted += `🏢 Cơ quan thực hiện: ${structuredInfo.agency || 'N/A'}\n`;
       formatted += `📋 Thành phần hồ sơ: ${structuredInfo.documents ? structuredInfo.documents.substring(0, 200) + '...' : 'N/A'}\n`;
       formatted += `📋 Trình tự thực hiện: ${structuredInfo.procedureSteps ? structuredInfo.procedureSteps.substring(0, 300) + '...' : 'N/A'}\n`;
 
@@ -93,13 +136,27 @@ class LocalRAGSystem {
           }
         }
       } else {
-        formatted += `🌐 Thông tin chi tiết: ${doc.source_url || 'N/A'}\n`;
+        // Use the source_url from the doc if available, otherwise try to extract from content
+        const primaryUrl = doc.source_url || this.extractUrlFromContent(doc.content);
+        if (primaryUrl) {
+          formatted += `🌐 Thông tin chi tiết: ${primaryUrl}\n`;
+        }
       }
 
       formatted += `📄 Nội dung đầy đủ: ${doc.content.substring(0, 600)}...\n\n`;
 
       return formatted;
     }).join('');
+  }
+
+  // Helper method to extract URL from document content (for filesystem fallback)
+  extractUrlFromContent(content) {
+    if (!content) return null;
+
+    // Look for URL patterns in the content
+    const urlRegex = /(https?:\/\/[^\s<>"'`]+)/i;
+    const match = content.match(urlRegex);
+    return match ? match[1] : null;
   }
 
   /**

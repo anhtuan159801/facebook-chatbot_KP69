@@ -14,36 +14,79 @@ class KnowledgeManager {
   // Generate knowledge from structured information
   async generateKnowledgeFromInfo(title, content, sourceUrl, category, formLink = null) {
     try {
-      const embedding = await this.embeddings.generateEmbedding(content);
-      
+      // Generate procedure code and extract ministry name
+      const procedure_code = this.generateProcedureCode(title);
+      const ministry_name = this.extractMinistryName(title);
+
+      // Check if procedure already exists
+      let { data: existingProcedure, error: selectError } = await this.supabase
+        .from('government_procedures_knowledge')
+        .select('id')
+        .eq('procedure_code', procedure_code)
+        .single();
+
+      if (!selectError && existingProcedure) {
+        // Procedure already exists, return success
+        return { success: true, id: existingProcedure.id };
+      }
+
+      // Create new knowledge entry with full content
       const { data, error } = await this.supabase
-        .from('knowledge_documents')
+        .from('government_procedures_knowledge')
         .insert({
-          title: title,
-          content: content,
+          procedure_code: procedure_code,
+          full_procedure_content: content,  // Store the full content as requested
+          procedure_title: title,
+          ministry_name: ministry_name,
           source_url: sourceUrl,
-          form_link: formLink,
-          category: category,
-          embedding: embedding,
+          doc_hash: this.generateDocHash(content),
+          file_size: content.length,
           metadata: {
             source_type: 'generated',
+            source_url: sourceUrl,
+            form_link: formLink,
             created_at: new Date().toISOString(),
             word_count: content.split(' ').length
-          },
-          last_crawled: new Date().toISOString()
+          }
         });
 
       if (error) {
-        console.error('Error storing generated knowledge:', error);
+        console.error('Error storing procedure knowledge:', error);
         return { success: false, error };
       }
 
-      console.log(`Stored generated knowledge: ${title}`);
-      return { success: true, data };
+      console.log(`Stored procedure knowledge: ${title}`);
+      return { success: true, id: data[0] ? data[0].id : null };
     } catch (error) {
       console.error('Error generating knowledge:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  // Helper method to generate procedure code from title
+  generateProcedureCode(title) {
+    // Generate a unique procedure code from title
+    const cleanTitle = title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+    return `PROC_${Date.now()}_${cleanTitle}`;
+  }
+
+  // Helper method to extract ministry name from title
+  extractMinistryName(title) {
+    // Extract ministry name from title if available
+    const ministryMatch = title.match(/Bộ_\w+|Sở_\w+|Phòng_\w+/);
+    return ministryMatch ? ministryMatch[0].replace(/_/g, ' ') : 'Unknown Ministry';
+  }
+
+  // Helper method to generate document hash
+  generateDocHash(content) {
+    // Simple hash function using content
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16);
   }
 
   // Generate knowledge from FAQ format
@@ -64,7 +107,7 @@ class KnowledgeManager {
     for (const procedure of procedures) {
       const steps = procedure.steps.map((step, index) => `Bước ${index + 1}: ${step}`).join('\n');
       const content = `${procedure.title}\n\nMô tả: ${procedure.description}\n\nCác bước thực hiện:\n${steps}\n\nLưu ý: ${procedure.notes || ''}`;
-      
+
       await this.generateKnowledgeFromInfo(
         procedure.title,
         content,
@@ -80,7 +123,7 @@ class KnowledgeManager {
     for (let i = 0; i < textChunks.length; i++) {
       const chunk = textChunks[i];
       const title = `${category} - Part ${i + 1}`;
-      
+
       await this.generateKnowledgeFromInfo(
         title,
         chunk,
@@ -95,7 +138,7 @@ class KnowledgeManager {
     // This would analyze conversation history to identify common questions
     // and generate knowledge articles based on them
     console.log('Analyzing conversations to generate knowledge...');
-    
+
     // Get common questions from conversation history
     const { data: conversations, error } = await this.supabase
       .from('conversations') // This assumes you have a conversations table
@@ -110,7 +153,7 @@ class KnowledgeManager {
 
     // Analyze messages to find common patterns/questions
     const commonQuestions = this.analyzeCommonQuestions(conversations);
-    
+
     for (const question of commonQuestions) {
       // Generate knowledge based on common questions
       const knowledgeContent = this.createKnowledgeFromQuestion(question);
@@ -131,12 +174,12 @@ class KnowledgeManager {
       /hướng dẫn.*thực hiện/gi,
       /bước.*tiếp theo/gi
     ];
-    
+
     const commonQuestions = [];
-    
+
     for (const conv of conversations) {
       if (!conv.message) continue;
-      
+
       for (const pattern of questionPatterns) {
         if (pattern.test(conv.message)) {
           // Extract the question-like sentence
@@ -152,7 +195,7 @@ class KnowledgeManager {
         }
       }
     }
-    
+
     return commonQuestions.slice(0, 10); // Return top 10 common questions
   }
 
@@ -163,40 +206,57 @@ class KnowledgeManager {
 
   // Bulk insert multiple knowledge items
   async bulkGenerateKnowledge(knowledgeItems) {
-    const itemsToInsert = [];
-    
+    let insertedCount = 0;
+    let skippedCount = 0;
+
     for (const item of knowledgeItems) {
-      const embedding = await this.embeddings.generateEmbedding(item.content);
-      
-      itemsToInsert.push({
-        title: item.title,
-        content: item.content,
-        source_url: item.source_url || 'internal',
-        form_link: item.form_link || null,
-        category: item.category || 'general',
-        embedding: embedding,
-        metadata: {
-          source_type: item.source_type || 'generated',
-          created_at: new Date().toISOString(),
-          tags: item.tags || [],
-          word_count: item.content.split(' ').length
-        },
-        last_crawled: new Date().toISOString()
-      });
+      // Create or find government procedure
+      const procedure_code = this.generateProcedureCode(item.title);
+      const ministry_name = this.extractMinistryName(item.title);
+
+      // Check if procedure already exists
+      let { data: existingProcedure, error: selectError } = await this.supabase
+        .from('government_procedures_knowledge')
+        .select('id')
+        .eq('procedure_code', procedure_code)
+        .single();
+
+      if (!selectError && existingProcedure) {
+        // Knowledge already exists, skip
+        skippedCount++;
+        continue;
+      }
+
+      // Insert new knowledge entry with full content
+      const { data, error } = await this.supabase
+        .from('government_procedures_knowledge')
+        .insert({
+          procedure_code: procedure_code,
+          full_procedure_content: item.content,  // Store the full content as requested
+          procedure_title: item.title,
+          ministry_name: ministry_name,
+          source_url: item.source_url || 'internal',
+          doc_hash: this.generateDocHash(item.content),
+          file_size: item.content.length,
+          metadata: {
+            source_type: item.source_type || 'generated',
+            source_url: item.source_url || 'internal',
+            form_link: item.form_link || null,
+            created_at: new Date().toISOString(),
+            tags: item.tags || [],
+            word_count: item.content.split(' ').length
+          }
+        });
+
+      if (error) {
+        console.error('Error inserting knowledge:', error);
+      } else {
+        insertedCount++;
+      }
     }
-    
-    // Insert all at once for better performance
-    const { data, error } = await this.supabase
-      .from('knowledge_documents')
-      .insert(itemsToInsert);
-    
-    if (error) {
-      console.error('Error bulk inserting knowledge:', error);
-      return { success: false, error };
-    }
-    
-    console.log(`Bulk inserted ${itemsToInsert.length} knowledge items`);
-    return { success: true, data };
+
+    console.log(`Bulk processed ${knowledgeItems.length} knowledge items: ${insertedCount} inserted, ${skippedCount} skipped`);
+    return { success: true, inserted: insertedCount, skipped: skippedCount };
   }
 }
 

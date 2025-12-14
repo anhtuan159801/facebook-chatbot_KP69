@@ -443,54 +443,57 @@ class CrawlerManager {
         // Generate embedding using local model
         const embedding = await this.embeddings.generateEmbedding(doc.content);
 
-        // Check if document already exists to avoid duplicates
-        const { data: existingDoc } = await this.supabase
-          .from('knowledge_documents')
-          .select('id')
-          .eq('source_url', doc.source_url)
-          .limit(1);
+        // First, create or find the government procedure record
+        const procedure_code = this.generateProcedureCode(doc.title);
+        const ministry_name = this.extractMinistryName(doc.title);
 
-        if (existingDoc && existingDoc.length > 0) {
-          // Update existing document
+        // Check if procedure already exists
+        const { data: existingKnowledge, error: selectError } = await this.supabase
+          .from('government_procedures_knowledge')
+          .select('id')
+          .eq('procedure_code', procedure_code)
+          .single();
+
+        if (existingKnowledge) {
+          // Knowledge already exists, update it
           const { error: updateError } = await this.supabase
-            .from('knowledge_documents')
+            .from('government_procedures_knowledge')
             .update({
-              title: doc.title,
-              content: doc.content,
-              form_link: doc.form_link,
-              category: doc.category,
-              embedding: embedding,
+              full_procedure_content: doc.content,
+              procedure_title: doc.title,
+              ministry_name: ministry_name,
+              source_url: doc.source_url,
+              doc_hash: this.generateDocHash(doc.content),
+              file_size: doc.content.length,
               metadata: doc.metadata,
-              updated_at: new Date().toISOString(),
-              last_crawled: new Date().toISOString()
+              updated_at: new Date().toISOString()
             })
-            .eq('id', existingDoc[0].id);
+            .eq('id', existingKnowledge.id);
 
           if (updateError) {
-            console.error('Error updating document:', updateError);
+            console.error('Error updating procedure knowledge:', updateError);
           } else {
-            console.log(`Updated document: ${doc.title}`);
+            console.log(`Updated procedure knowledge: ${doc.title}`);
           }
         } else {
-          // Insert new document
+          // Insert new knowledge entry with full content
           const { data, error } = await this.supabase
-            .from('knowledge_documents')
+            .from('government_procedures_knowledge')
             .insert({
-              title: doc.title,
-              content: doc.content,
+              procedure_code: procedure_code,
+              full_procedure_content: doc.content,  // Store the full content as requested
+              procedure_title: doc.title,
+              ministry_name: ministry_name,
               source_url: doc.source_url,
-              form_link: doc.form_link,
-              category: doc.category,
-              embedding: embedding,
-              metadata: doc.metadata,
-              last_crawled: new Date().toISOString()
-            })
-            .select();
+              doc_hash: this.generateDocHash(doc.content),
+              file_size: doc.content.length,
+              metadata: doc.metadata
+            });
 
           if (error) {
-            console.error('Error storing document:', error);
+            console.error('Error storing procedure knowledge:', error);
           } else {
-            console.log(`Stored new document: ${doc.title}`);
+            console.log(`Stored new procedure knowledge: ${doc.title}`);
           }
         }
       } catch (error) {
@@ -499,6 +502,32 @@ class CrawlerManager {
     }
 
     console.log(`Completed processing ${documents.length} documents`);
+  }
+
+  // Helper method to generate procedure code from title
+  generateProcedureCode(title) {
+    // Generate a unique procedure code from title
+    const cleanTitle = title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+    return `PROC_${Date.now()}_${cleanTitle}`;
+  }
+
+  // Helper method to extract ministry name from title
+  extractMinistryName(title) {
+    // Extract ministry name from title if available
+    const ministryMatch = title.match(/Bộ_\w+|Sở_\w+|Phòng_\w+/);
+    return ministryMatch ? ministryMatch[0].replace(/_/g, ' ') : 'Unknown Ministry';
+  }
+
+  // Helper method to generate document hash
+  generateDocHash(content) {
+    // Simple hash function using content
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16);
   }
 
   async crawlPeriodically() {

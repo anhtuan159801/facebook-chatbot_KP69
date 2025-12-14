@@ -1,0 +1,92 @@
+2025-12-14 12:49:32 - ProcedureScraper - ERROR - Critical error: 'C:\\AnhTuan\\Anh_Tuan\\Tool\\Chatbot_new\\facebook-chatbot\\downloads_ministries\\Bộ Dân tộc và Tôn giáo_415300'
+Traceback (most recent call last):
+  File "C:\AnhTuan\Anh_Tuan\Tool\Chatbot_new\facebook-chatbot\Knowlegd-rag\crwal.py", line 2880, in run
+    self.download_all_guides(procedures, ministry_folder)
+  File "C:\AnhTuan\Anh_Tuan\Tool\Chatbot_new\facebook-chatbot\Knowlegd-rag\crwal.py", line 2731, in download_all_guides
+    success, proc_code, status = future.result()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\_base.py", line 451, in result
+    return self.__get_result()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\_base.py", line 403, in __get_result
+    raise self._exception
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\AnhTuan\Anh_Tuan\Tool\Chatbot_new\facebook-chatbot\Knowlegd-rag\crwal.py", line 2551, in download_procedure_parallel
+    self.cache[cache_key]['checksum'] = self._calculate_file_checksum(final_processed_filepath)
+KeyError: 'C:\\AnhTuan\\Anh_Tuan\\Tool\\Chatbot_new\\facebook-chatbot\\downloads_ministries\\Bộ Dân tộc và Tôn giáo_415300'
+2025-12-14 14:17:07 - ProcedureScraper - ERROR - Critical error: [Errno 13] Permission denied: 'C:\\AnhTuan\\Anh_Tuan\\Tool\\Chatbot_new\\facebook-chatbot\\downloads_ministries\\Bộ Dân tộc và Tôn giáo_documents_verification.csv'
+Traceback (most recent call last):
+  File "C:\AnhTuan\Anh_Tuan\Tool\Chatbot_new\facebook-chatbot\Knowlegd-rag\crwal.py", line 3039, in run
+    self.export_chunks_to_csv(ministry_name)
+  File "C:\AnhTuan\Anh_Tuan\Tool\Chatbot_new\facebook-chatbot\Knowlegd-rag\crwal.py", line 2839, in export_chunks_to_csv
+    with open(csv_filename, 'w', newline='', encoding='utf-8') as csvfile:
+PermissionError: [Errno 13] Permission denied: 'C:\\AnhTuan\\Anh_Tuan\\Tool\\Chatbot_new\\facebook-chatbot\\downloads_ministries\\Bộ Dân tộc và Tôn giáo_documents_verification.csv'
+2025-12-14 14:19:15 - ProcedureScraper - ERROR - Critical error: Message: timeout: Timed out receiving message from renderer: 59.730
+  (Session info: chrome=143.0.7499.41)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0x7ff795cd8245
+	0x7ff795cd82a0
+	0x7ff795ab165d
+	0x7ff795a9e847
+	0x7ff795a9e5bd
+	0x7ff795a9c20a
+	0x7ff795a9cbcf
+	0x7ff795aabb8a
+	0x7ff795ac223f
+	0x7ff795ac940a
+	0x7ff795a9d375
+	0x7ff795ac1df2
+	0x7ff795b5b080
+	0x7ff795afac29
+	0x7ff795afba93
+	0x7ff795feffe0
+	0x7ff795fea920
+	0x7ff796009086
+	0x7ff795cf5744
+	0x7ff795cfe6ec
+	0x7ff795ce1964
+	0x7ff795ce1b15
+	0x7ff795cc7842
+	0x7ff9f909e8d7
+	0x7ff9fa18c53c
+Traceback (most recent call last):
+  File "C:\AnhTuan\Anh_Tuan\Tool\Chatbot_new\facebook-chatbot\Knowlegd-rag\crwal.py", line 2993, in run
+    procedures = self.get_all_procedures(url, ministry_name)
+  File "C:\AnhTuan\Anh_Tuan\Tool\Chatbot_new\facebook-chatbot\Knowlegd-rag\crwal.py", line 559, in get_all_procedures
+    self.driver.get(url)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\selenium\webdriver\remote\webdriver.py", line 473, in get
+    self.execute(Command.GET, {"url": url})
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\selenium\webdriver\remote\webdriver.py", line 448, in execute
+    self.error_handler.check_response(response)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.TimeoutException: Message: timeout: Timed out receiving message from renderer: 59.730
+  (Session info: chrome=143.0.7499.41)
+Stacktrace:
+Symbols not available. Dumping unresolved backtrace:
+	0x7ff795cd8245
+	0x7ff795cd82a0
+	0x7ff795ab165d
+	0x7ff795a9e847
+	0x7ff795a9e5bd
+	0x7ff795a9c20a
+	0x7ff795a9cbcf
+	0x7ff795aabb8a
+	0x7ff795ac223f
+	0x7ff795ac940a
+	0x7ff795a9d375
+	0x7ff795ac1df2
+	0x7ff795b5b080
+	0x7ff795afac29
+	0x7ff795afba93
+	0x7ff795feffe0
+	0x7ff795fea920
+	0x7ff796009086
+	0x7ff795cf5744
+	0x7ff795cfe6ec
+	0x7ff795ce1964
+	0x7ff795ce1b15
+	0x7ff795cc7842
+	0x7ff9f909e8d7
+	0x7ff9fa18c53c
+

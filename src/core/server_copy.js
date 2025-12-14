@@ -1,13 +1,85 @@
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
+const axios = require('axios'); // Added for keep-alive pings
 const app = express();
 const port = process.env.PORT || 3000;
 
+// === HEALTH CHECK AND KEEP-ALIVE SETUP ===
+// Simple health check endpoint to prevent 15-minute sleep
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        service: 'Router Hug Bot',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        message: 'Government Services Chatbot is running and ready to serve!'
+    });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+    res.json({
+        status: 'alive',
+        service: 'Router Hug Bot',
+        functionality: 'Government Services Chatbot',
+        timestamp: new Date().toISOString(),
+        endpoints: {
+            health: '/health',
+            webhook: '/webhook',
+            verify: 'GET /webhook (with verify_token)'
+        }
+    });
+});
+
+// Keep-alive ping function to prevent sleep on cloud platforms
+function setupKeepAlive() {
+    const baseURL = process.env.BASE_URL || `${process.env.HOST || 'http://localhost'}:${port}`;
+    const healthURL = `${baseURL}/health`;
+
+    // Ping the health endpoint to keep the service awake
+    const keepAlivePing = () => {
+        if (process.env.NODE_ENV === 'production' || process.env.KEEP_ALIVE_ENABLED === 'true') {
+            axios.get(healthURL, {
+                timeout: 5000,
+                headers: {
+                    'User-Agent': 'Router-Hug-Bot-Keep-Alive/1.0'
+                }
+            })
+            .then(response => {
+                console.log(`🔄 Keep-alive ping successful at ${new Date().toISOString()}`);
+                console.log(`📊 Response status: ${response.status}`);
+            })
+            .catch(error => {
+                // Only log significant errors, not timeout errors (which are common)
+                if (error.code !== 'ECONNREFUSED') {
+                    console.log(`⚠️  Keep-alive ping failed: ${error.message}`);
+                }
+            });
+        }
+    };
+
+    // Ping every 14 minutes (just before 15-minute timeout)
+    const keepAliveInterval = 14 * 60 * 1000; // 14 minutes in milliseconds
+
+    if (process.env.NODE_ENV === 'production' || process.env.KEEP_ALIVE_ENABLED === 'true') {
+        console.log(`⏰ Setting up keep-alive ping every ${keepAliveInterval / 1000 / 60} minutes...`);
+        setInterval(keepAlivePing, keepAliveInterval);
+
+        // Initial ping
+        setTimeout(keepAlivePing, 5000); // Wait 5 seconds then initial ping
+    } else {
+        console.log('ℹ️  Keep-alive disabled in development mode');
+    }
+}
+
+// Initialize keep-alive when server starts
+setupKeepAlive();
+
 // === IMPORT PROMPTS FROM CENTRALIZED FILE ===
-const { 
-    SYSTEM_PROMPT, 
-    IMAGE_ANALYSIS_PROMPT, 
+const {
+    SYSTEM_PROMPT,
+    IMAGE_ANALYSIS_PROMPT,
     AUDIO_TRANSCRIPTION_PROMPT,
     CONTEXT_PROMPTS,
     ERROR_PROMPTS,
@@ -674,6 +746,10 @@ process.on('SIGTERM', async () => {
 });
 
 // ==== KHỞI ĐỘNG SERVER ====
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
+    console.log(`🛡️  Health check available at http://localhost:${port}/health`);
 });
+
+// Export for use in other modules (like render startup scripts)
+module.exports = { app, server, port };

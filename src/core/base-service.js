@@ -611,8 +611,9 @@ class BaseChatbotService {
                     text: "Vui lòng trả lời 'Có' nếu bạn muốn được hướng dẫn từng bước, hoặc 'Không' nếu bạn chỉ muốn xem hướng dẫn tổng quát."
                 });
 
-                // Save to both history systems
+                // Save to both history systems - use the saveConversation method which now handles Supabase
                 await this.saveConversation(sender_psid, userMessage, text);
+                // The ChatHistoryManager will handle its own storage
                 await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
                 await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
                     intent: detectedContext,
@@ -643,8 +644,9 @@ class BaseChatbotService {
                     await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, allSuggestions);
                 }
 
-                // Save to both history systems
+                // Save to both history systems - use the saveConversation method which now handles Supabase
                 await this.saveConversation(sender_psid, userMessage, text);
+                // The ChatHistoryManager will handle its own storage
                 await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
                 await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
                     intent: detectedContext
@@ -717,8 +719,9 @@ class BaseChatbotService {
             const response = { "text": cleanedText };
             await this.callSendAPIWithRating(sender_psid, response, quickReplies);
 
-            // Save to both history systems
+            // Save to both history systems - use the saveConversation method which now handles Supabase
             await this.saveConversation(sender_psid, "[Ảnh đính kèm]", cleanedText);
+            // The ChatHistoryManager will handle its own storage
             await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, "[Ảnh đính kèm: hình ảnh được gửi]", 'image', {
                 attachment_type: 'image',
                 mime_type: mimeType
@@ -836,8 +839,9 @@ class BaseChatbotService {
                 await this.callSendAPIWithRating(sender_psid, response, allSuggestions);
             }
 
-            // Save to both history systems
+            // Save to both history systems - use the saveConversation method which now handles Supabase
             await this.saveConversation(sender_psid, `[Voice: ${transcript}]`, text);
+            // The ChatHistoryManager will handle its own storage
             await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, `[Voice: ${transcript}]`, 'audio', {
                 attachment_type: 'audio',
                 mime_type: mimeType,
@@ -928,32 +932,199 @@ class BaseChatbotService {
     }
     
     async getConversationHistory(userId) {
-        const query = {
-            text: `
-                SELECT message, role FROM (
-                    SELECT message, 'user' as role, created_at FROM conversations WHERE user_id = $1 AND message IS NOT NULL
-                    UNION ALL
-                    SELECT bot_response as message, 'model' as role, created_at FROM conversations WHERE user_id = $1 AND bot_response IS NOT NULL
-                ) as history
-                ORDER BY created_at DESC
-                LIMIT 20
-            `,
-            values: [userId],
-        };
         try {
-            const { rows } = await this.pool.query(query);
-            return rows.reverse().map(row => ({ role: row.role, parts: [{ text: row.message }] }));
+            // Use Supabase for conversation history if available, otherwise fallback to old method
+            if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+                // Initialize Supabase client for history operations
+                const { createClient } = require('@supabase/supabase-js');
+                const supabase = createClient(
+                    process.env.SUPABASE_URL,
+                    process.env.SUPABASE_ANON_KEY
+                );
+
+                // First, ensure the user exists in the users table
+                const { data: existingUser } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .single();
+
+                if (!existingUser) {
+                    // Create user if doesn't exist
+                    await supabase.from('users').insert({ user_id: userId });
+                }
+
+                // Get recent conversation history (try the new chat_history table first, then conversations table)
+                let conversations = [];
+                let error = null;
+
+                // Try to get from chat_history table (used by ChatHistoryManager)
+                const { data: chatHistory, error: chatHistoryError } = await supabase
+                    .from('chat_history')
+                    .select('message_content, message_type, created_at')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                if (!chatHistoryError) {
+                    conversations = chatHistory;
+                } else {
+                    // Fallback to conversations table if chat_history doesn't exist or has issues
+                    const { data: convHistory, error: convError } = await supabase
+                        .from('conversations')
+                        .select('message_content, message_type, created_at')
+                        .eq('user_id', userId)
+                        .order('created_at', { ascending: false })
+                        .limit(20);
+
+                    if (!convError) {
+                        conversations = convHistory;
+                    } else {
+                        error = convError;
+                    }
+                }
+
+                if (error) {
+                    console.error('Supabase error fetching history:', error);
+                    // Fallback to old method
+                    const query = {
+                        text: `
+                            SELECT message, role FROM (
+                                SELECT message, 'user' as role, created_at FROM conversations WHERE user_id = $1 AND message IS NOT NULL
+                                UNION ALL
+                                SELECT bot_response as message, 'model' as role, created_at FROM conversations WHERE user_id = $1 AND bot_response IS NOT NULL
+                            ) as history
+                            ORDER BY created_at DESC
+                            LIMIT 20
+                        `,
+                        values: [userId],
+                    };
+                    try {
+                        const { rows } = await this.pool.query(query);
+                        return rows.reverse().map(row => ({ role: row.role, parts: [{ text: row.message }] }));
+                    } catch (oldError) {
+                        console.error('Error fetching history:', oldError);
+                        return [];
+                    }
+                }
+
+                // Format for AI consumption
+                return conversations.reverse().map(conv => ({
+                    role: conv.message_type === 'user' ? 'user' : 'assistant',
+                    parts: [{ text: conv.message_content }]
+                }));
+            } else {
+                // Fallback to old method if Supabase not configured
+                const query = {
+                    text: `
+                        SELECT message, role FROM (
+                            SELECT message, 'user' as role, created_at FROM conversations WHERE user_id = $1 AND message IS NOT NULL
+                            UNION ALL
+                            SELECT bot_response as message, 'model' as role, created_at FROM conversations WHERE user_id = $1 AND bot_response IS NOT NULL
+                        ) as history
+                        ORDER BY created_at DESC
+                        LIMIT 20
+                    `,
+                    values: [userId],
+                };
+                try {
+                    const { rows } = await this.pool.query(query);
+                    return rows.reverse().map(row => ({ role: row.role, parts: [{ text: row.message }] }));
+                } catch (error) {
+                    console.error('Error fetching history:', error);
+                    return [];
+                }
+            }
         } catch (error) {
-            console.error('Error fetching history:', error);
+            console.error('Error in getConversationHistory:', error);
             return [];
         }
     }
-    
+
     async saveConversation(userId, userMessage, botResponse) {
         try {
-            await this.pool.query('INSERT INTO conversations (user_id, message, bot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
+            // Use Supabase for conversation history if available, otherwise fallback to old method
+            if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+                // Initialize Supabase client for history operations
+                const { createClient } = require('@supabase/supabase-js');
+                const supabase = createClient(
+                    process.env.SUPABASE_URL,
+                    process.env.SUPABASE_ANON_KEY
+                );
+
+                // First, ensure the user exists in the users table
+                let { data: user, error: userError } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .single();
+
+                if (userError || !user) {
+                    // Create user if doesn't exist
+                    const { data: newUser, error: createUserError } = await supabase
+                        .from('users')
+                        .insert({ user_id: userId })
+                        .select('id')
+                        .single();
+
+                    if (createUserError) {
+                        console.error('Error creating user:', createUserError);
+                        throw createUserError;
+                    }
+
+                    user = newUser;
+                }
+
+                // Create a session if needed (or get existing active session)
+                const sessionId = this.getSessionId(userId);
+
+                // Create the session if it doesn't exist
+                const { data: existingSession } = await supabase
+                    .from('conversation_sessions')  // Use the table expected by ChatHistoryManager
+                    .select('id')
+                    .eq('session_id', sessionId)
+                    .single();
+
+                if (!existingSession) {
+                    await supabase.from('conversation_sessions').insert({
+                        session_id: sessionId,
+                        user_id: user.id
+                    });
+                }
+
+                // Save user message to the chat_history table (used by ChatHistoryManager)
+                if (userMessage) {
+                    await supabase.from('chat_history').insert({
+                        session_id: sessionId,
+                        user_id: user.id,
+                        message_type: 'user',
+                        message_content: userMessage,
+                        intent: this.detectContext(userMessage) || null
+                    });
+                }
+
+                // Save bot response to the chat_history table (used by ChatHistoryManager)
+                if (botResponse) {
+                    await supabase.from('chat_history').insert({
+                        session_id: sessionId,
+                        user_id: user.id,
+                        message_type: 'assistant',
+                        message_content: botResponse,
+                        message_metadata: { source: 'ai_response' }
+                    });
+                }
+            } else {
+                // Fallback to old method if Supabase not configured
+                await this.pool.query('INSERT INTO conversations (user_id, message, bot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
+            }
         } catch (error) {
             console.error('Error saving conversation:', error);
+            // Fallback to old method if Supabase fails
+            try {
+                await this.pool.query('INSERT INTO conversations (user_id, message, bot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
+            } catch (oldError) {
+                console.error('Error saving to fallback db:', oldError);
+            }
         }
     }
     

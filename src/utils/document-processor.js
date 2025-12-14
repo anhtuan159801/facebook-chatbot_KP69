@@ -57,38 +57,96 @@ class DocumentProcessor {
 
   async storeDocument(document, embeddings) {
     try {
-      // Generate embedding for the document content
-      const embedding = await embeddings.generateEmbedding(document.content);
+      // Generate procedure code and extract ministry name
+      const procedure_code = this.generateProcedureCode(document.title);
+      const ministry_name = this.extractMinistryName(document.title);
 
-      // Store in Supabase
-      const { data, error } = await this.supabase
-        .from('knowledge_documents')
-        .insert({
-          title: document.title,
-          content: document.content,
-          source_url: document.source_url,
-          form_link: null,
-          category: document.category,
-          embedding: embedding,
-          metadata: {
-            source_type: 'document_upload',
-            file_name: document.source_url.split('/').pop(),
-            word_count: document.content.split(' ').length
-          },
-          last_crawled: new Date().toISOString()
-        });
+      // Check if procedure already exists
+      const { data: existingKnowledge, error: selectError } = await this.supabase
+        .from('government_procedures_knowledge')
+        .select('id')
+        .eq('procedure_code', procedure_code)
+        .single();
 
-      if (error) {
-        console.error('Error storing document:', error);
-        throw error;
+      if (existingKnowledge) {
+        // Knowledge already exists, update it
+        const { error: updateError } = await this.supabase
+          .from('government_procedures_knowledge')
+          .update({
+            full_procedure_content: document.content,
+            procedure_title: document.title,
+            ministry_name: ministry_name,
+            source_url: document.source_url,
+            doc_hash: this.generateDocHash(document.content),
+            file_size: document.content.length,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingKnowledge.id);
+
+        if (updateError) {
+          console.error('Error updating procedure knowledge:', updateError);
+          throw updateError;
+        }
+
+        console.log(`Updated procedure knowledge: ${document.title}`);
+        return { id: existingKnowledge.id };
+      } else {
+        // Store content in government_procedures_knowledge table (full content)
+        const { data, error } = await this.supabase
+          .from('government_procedures_knowledge')
+          .insert({
+            procedure_code: procedure_code,
+            full_procedure_content: document.content,  // Store the full content as requested
+            procedure_title: document.title,
+            ministry_name: ministry_name,
+            source_url: document.source_url,
+            doc_hash: this.generateDocHash(document.content),
+            file_size: document.content.length,
+            metadata: {
+              source_type: 'document_upload',
+              file_name: document.source_url.split('/').pop(),
+              word_count: document.content.split(' ').length
+            }
+          });
+
+        if (error) {
+          console.error('Error storing procedure knowledge:', error);
+          throw error;
+        }
+
+        console.log(`Stored procedure knowledge: ${document.title}`);
+        return data;
       }
-
-      console.log(`Stored document: ${document.title}`);
-      return data;
     } catch (error) {
       console.error('Error storing document:', error);
       throw error;
     }
+  }
+
+  // Helper method to generate procedure code from title
+  generateProcedureCode(title) {
+    // Generate a unique procedure code from title
+    const cleanTitle = title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+    return `PROC_${Date.now()}_${cleanTitle}`;
+  }
+
+  // Helper method to extract ministry name from title
+  extractMinistryName(title) {
+    // Extract ministry name from title if available
+    const ministryMatch = title.match(/Bộ_\w+|Sở_\w+|Phòng_\w+/);
+    return ministryMatch ? ministryMatch[0].replace(/_/g, ' ') : 'Unknown Ministry';
+  }
+
+  // Helper method to generate document hash
+  generateDocHash(content) {
+    // Simple hash function using content
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16);
   }
 
   async processAndStoreDocument(buffer, fileName, fileType, embeddings) {

@@ -248,17 +248,35 @@ class KnowledgeRAGProcessor {
    */
   async clearKnowledgeByCategory(category) {
     try {
-      const { error } = await this.supabase
-        .from('knowledge_documents')
-        .delete()
-        .ilike('category', `%${category}%`);
+      // Find knowledge entries that match the category
+      const { data: knowledgeEntries, error: knowledgeError } = await this.supabase
+        .from('government_procedures_knowledge')
+        .select('id')
+        .ilike('procedure_title', `%${category}%`)
+        .or(`ministry_name.ilike.%${category}%,full_procedure_content.ilike.%${category}%`);
 
-      if (error) {
-        console.error('❌ Error clearing knowledge:', error);
-        return { success: false, error };
+      if (knowledgeError) {
+        console.error('❌ Error finding knowledge entries to clear:', knowledgeError);
+        return { success: false, error: knowledgeError };
       }
 
-      console.log(`🗑️ Cleared knowledge documents with category containing: ${category}`);
+      if (knowledgeEntries && knowledgeEntries.length > 0) {
+        const knowledgeIds = knowledgeEntries.map(k => k.id);
+
+        // Delete the knowledge entries
+        const { error: deleteError } = await this.supabase
+          .from('government_procedures_knowledge')
+          .delete()
+          .in('id', knowledgeIds);
+
+        if (deleteError) {
+          console.error('❌ Error clearing knowledge entries:', deleteError);
+          return { success: false, error: deleteError };
+        }
+
+        console.log(`🗑️ Cleared ${knowledgeEntries.length} knowledge entries with category containing: ${category}`);
+      }
+
       return { success: true };
     } catch (error) {
       console.error('❌ Error clearing knowledge by category:', error);
@@ -272,7 +290,7 @@ class KnowledgeRAGProcessor {
   async countKnowledgeDocuments() {
     try {
       const { count, error } = await this.supabase
-        .from('knowledge_documents')
+        .from('government_procedures_knowledge')
         .select('*', { count: 'exact', head: true });
 
       if (error) {

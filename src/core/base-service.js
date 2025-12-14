@@ -8,6 +8,7 @@
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
+const ChatHistoryService = require('./chat-history-service');
 
 // Import centralized modules
 const {
@@ -502,7 +503,7 @@ class BaseChatbotService {
         // Get relevant knowledge from RAG system
         const detectedContext = this.detectContext(userMessage);
         const relevantKnowledge = await this.ragSystem.getRelevantKnowledge(userMessage, detectedContext);
-        const knowledgeContext = this.ragSystem.formatKnowledgeForPrompt(relevantKnowledge);
+        const knowledgeContext = this.ragSystem.formatKnowledgeForPrompt(relevantKnowledge, userMessage);
 
         // Get conversation history from both old and new systems
         const oldHistory = await this.getConversationHistory(sender_psid);
@@ -1052,67 +1053,14 @@ class BaseChatbotService {
                     process.env.SUPABASE_ANON_KEY
                 );
 
-                // First, ensure the user exists in the users table
-                let { data: user, error: userError } = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('user_id', userId)
-                    .single();
+                // Use the ChatHistoryService to store in user_chat_history table
+                const chatHistoryService = new ChatHistoryService();
 
-                if (userError || !user) {
-                    // Create user if doesn't exist
-                    const { data: newUser, error: createUserError } = await supabase
-                        .from('users')
-                        .insert({ user_id: userId })
-                        .select('id')
-                        .single();
-
-                    if (createUserError) {
-                        console.error('Error creating user:', createUserError);
-                        throw createUserError;
-                    }
-
-                    user = newUser;
-                }
-
-                // Create a session if needed (or get existing active session)
+                // Create a session ID if needed
                 const sessionId = this.getSessionId(userId);
 
-                // Create the session if it doesn't exist
-                const { data: existingSession } = await supabase
-                    .from('conversation_sessions')  // Use the table expected by ChatHistoryManager
-                    .select('id')
-                    .eq('session_id', sessionId)
-                    .single();
-
-                if (!existingSession) {
-                    await supabase.from('conversation_sessions').insert({
-                        session_id: sessionId,
-                        user_id: user.id
-                    });
-                }
-
-                // Save user message to the chat_history table (used by ChatHistoryManager)
-                if (userMessage) {
-                    await supabase.from('chat_history').insert({
-                        session_id: sessionId,
-                        user_id: user.id,
-                        message_type: 'user',
-                        message_content: userMessage,
-                        intent: this.detectContext(userMessage) || null
-                    });
-                }
-
-                // Save bot response to the chat_history table (used by ChatHistoryManager)
-                if (botResponse) {
-                    await supabase.from('chat_history').insert({
-                        session_id: sessionId,
-                        user_id: user.id,
-                        message_type: 'assistant',
-                        message_content: botResponse,
-                        message_metadata: { source: 'ai_response' }
-                    });
-                }
+                // Save conversation to user_chat_history table
+                await chatHistoryService.saveConversation(userId, userMessage, botResponse, sessionId);
             } else {
                 // Fallback to old method if Supabase not configured
                 await this.pool.query('INSERT INTO conversations (user_id, message, bot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);

@@ -1,6 +1,7 @@
 require('dotenv').config(); // Load environment variables
 const LocalEmbeddings = require('./local-embeddings');
 const { createClient } = require('@supabase/supabase-js');
+const ProfessionalResponseFormatter = require('../utils/professional-response-formatter');
 
 class LocalRAGSystem {
   constructor() {
@@ -45,7 +46,8 @@ class LocalRAGSystem {
           full_procedure_content,
           procedure_title,
           ministry_name,
-          source_url
+          source_url,
+          metadata
         `)
         .textSearch('full_procedure_content', userQuery, {
           type: 'websearch',
@@ -76,7 +78,8 @@ class LocalRAGSystem {
         source_url: doc.source_url,
         ministry_name: doc.ministry_name,
         procedure_code: doc.procedure_code,
-        procedure_title: doc.procedure_title
+        procedure_title: doc.procedure_title,
+        metadata: doc.metadata  // Include metadata for additional info
       }));
 
       return formattedResults;
@@ -100,11 +103,22 @@ class LocalRAGSystem {
     }
   }
 
-  formatKnowledgeForPrompt(knowledgeDocs) {
+  formatKnowledgeForPrompt(knowledgeDocs, userQuery = '') {
     if (!knowledgeDocs || knowledgeDocs.length === 0) {
       return '';
     }
 
+    // Special handling for temporary residence cancellation
+    if (userQuery.toLowerCase().includes('xóa tạm trú') || userQuery.toLowerCase().includes('hủy đăng ký tạm trú')) {
+      return ProfessionalResponseFormatter.formatTemporaryResidenceCancellationResponse(knowledgeDocs);
+    }
+
+    // Use the professional formatter for administrative procedures
+    if (ProfessionalResponseFormatter.isAdministrativeProcedureQuery(userQuery)) {
+      return ProfessionalResponseFormatter.formatStructuredResponse(userQuery, knowledgeDocs);
+    }
+
+    // Original formatting for non-administrative content
     return knowledgeDocs.map(doc => {
       // Extract structured information from the document content
       const structuredInfo = this.extractStructuredInfo(doc.content);
@@ -141,6 +155,11 @@ class LocalRAGSystem {
         if (primaryUrl) {
           formatted += `🌐 Thông tin chi tiết: ${primaryUrl}\n`;
         }
+      }
+
+      // Include metadata form link if available
+      if (doc.metadata && doc.metadata.form_link) {
+        formatted += `📋 Form link: ${doc.metadata.form_link}\n`;
       }
 
       formatted += `📄 Nội dung đầy đủ: ${doc.content.substring(0, 600)}...\n\n`;
@@ -273,11 +292,18 @@ class LocalRAGSystem {
       const formUrls = urls.filter(url =>
         url.toLowerCase().includes('bieu-mau') ||
         url.toLowerCase().includes('form') ||
-        url.toLowerCase().includes('mau-so')
+        url.toLowerCase().includes('mau-so') ||
+        url.toLowerCase().includes('download')
       );
       if (formUrls.length > 0) {
         info.formLink = formUrls[0];
       }
+    }
+
+    // Extract legal basis
+    const legalBasisMatches = content.match(/(?:Căn cứ pháp lý|Theo quy định|Theo luật)[\s\S]*?(?:\n\n|\n[^A-Z]|$)/i);
+    if (legalBasisMatches) {
+      info.legalBasis = legalBasisMatches[0].trim();
     }
 
     return info;

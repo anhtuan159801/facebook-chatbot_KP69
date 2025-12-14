@@ -42,7 +42,7 @@ class LocalRAGSystem {
         .from('government_procedures_knowledge_base')
         .select(`
           id,
-          procedure_code as procedure_code,
+          procedure_code,
           procedure_content as full_procedure_content,
           procedure_title,
           ministry_name,

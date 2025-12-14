@@ -1032,14 +1032,12 @@ class BaseChatbotService {
                     parts: [{ text: conv.message_content }]
                 }));
             } else {
-                // Fallback to old method if Supabase not configured
+                // Fallback to correct table if Supabase not configured
                 const query = {
                     text: `
-                        SELECT message, role FROM (
-                            SELECT message, 'user' as role, created_at FROM conversations WHERE user_id = $1 AND message IS NOT NULL
-                            UNION ALL
-                            SELECT bot_response as message, 'model' as role, created_at FROM conversations WHERE user_id = $1 AND bot_response IS NOT NULL
-                        ) as history
+                        SELECT user_request as message, 'user' as role, created_at FROM user_chat_history WHERE facebook_user_id = $1 AND user_request IS NOT NULL
+                        UNION ALL
+                        SELECT chatbot_response as message, 'assistant' as role, created_at FROM user_chat_history WHERE facebook_user_id = $1 AND chatbot_response IS NOT NULL
                         ORDER BY created_at DESC
                         LIMIT 20
                     `,
@@ -1079,14 +1077,14 @@ class BaseChatbotService {
                 // Save conversation to user_chat_history table
                 await chatHistoryService.saveConversation(userId, userMessage, botResponse, sessionId);
             } else {
-                // Fallback to old method if Supabase not configured
-                await this.pool.query('INSERT INTO conversations (user_id, message, bot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
+                // Fallback to correct table if Supabase not configured
+                await this.pool.query('INSERT INTO user_chat_history (facebook_user_id, user_request, chatbot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
             }
         } catch (error) {
             console.error('Error saving conversation:', error);
-            // Fallback to old method if Supabase fails
+            // Fallback to correct table if Supabase fails
             try {
-                await this.pool.query('INSERT INTO conversations (user_id, message, bot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
+                await this.pool.query('INSERT INTO user_chat_history (facebook_user_id, user_request, chatbot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
             } catch (oldError) {
                 console.error('Error saving to fallback db:', oldError);
             }

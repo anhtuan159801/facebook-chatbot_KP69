@@ -19,17 +19,9 @@ class ChatHistoryManager {
       const { data, error } = await this.supabase
         .from('user_chat_history')
         .insert({
-          user_id: userId,
+          facebook_user_id: userId,
           session_id: sessionId,
-          message_type: 'user',
-          message_content: message,
-          message_embedding: embedding,
-          intent: intent,
-          metadata: {
-            ...metadata,
-            message_length: message.length,
-            word_count: message.split(' ').length
-          },
+          user_request: message,
           created_at: new Date().toISOString()
         });
 
@@ -56,18 +48,9 @@ class ChatHistoryManager {
       const { data, error } = await this.supabase
         .from('user_chat_history')
         .insert({
-          user_id: userId,
+          facebook_user_id: userId,
           session_id: sessionId,
-          message_type: 'assistant',
-          message_content: response,
-          message_embedding: embedding,
-          metadata: {
-            ...metadata,
-            response_time_ms: responseTimeMs,
-            message_length: response.length,
-            word_count: response.split(' ').length
-          },
-          response_time_ms: responseTimeMs,
+          chatbot_response: response,
           created_at: new Date().toISOString()
         });
 
@@ -91,15 +74,9 @@ class ChatHistoryManager {
       const { data, error } = await this.supabase
         .from('user_chat_history')
         .insert({
-          user_id: userId,
+          facebook_user_id: userId,
           session_id: sessionId,
-          message_type: 'system',
-          message_content: message,
-          message_embedding: embedding,
-          metadata: {
-            ...metadata,
-            message_length: message.length
-          },
+          user_request: message,  // For system messages, we can store in user_request
           created_at: new Date().toISOString()
         });
 
@@ -121,7 +98,7 @@ class ChatHistoryManager {
       let query = this.supabase
         .from('user_chat_history')
         .select('*')
-        .eq('user_id', userId)
+        .eq('facebook_user_id', userId)
         .order('created_at', { ascending: true });
 
       if (sessionId) {

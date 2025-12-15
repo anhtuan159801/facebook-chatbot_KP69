@@ -50,8 +50,8 @@ class LocalRAGSystem {
           metadata
         `)
         .textSearch('full_content', userQuery, {
-          type: 'websearch',
-          config: 'english'
+          type: 'websearch'
+          // Removing config to use default which should work better for mixed languages
         })
         .order('created_at', { ascending: false })
         .limit(5);

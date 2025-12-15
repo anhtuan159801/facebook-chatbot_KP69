@@ -17,7 +17,7 @@ class ChatHistoryManager {
       const embedding = await this.embeddings.generateEmbedding(message);
       
       const { data, error } = await this.supabase
-        .from('chat_history')
+        .from('user_chat_history')
         .insert({
           user_id: userId,
           session_id: sessionId,
@@ -54,7 +54,7 @@ class ChatHistoryManager {
       const embedding = await this.embeddings.generateEmbedding(response);
       
       const { data, error } = await this.supabase
-        .from('chat_history')
+        .from('user_chat_history')
         .insert({
           user_id: userId,
           session_id: sessionId,
@@ -89,7 +89,7 @@ class ChatHistoryManager {
       const embedding = await this.embeddings.generateEmbedding(message);
       
       const { data, error } = await this.supabase
-        .from('chat_history')
+        .from('user_chat_history')
         .insert({
           user_id: userId,
           session_id: sessionId,
@@ -119,7 +119,7 @@ class ChatHistoryManager {
   async getConversationHistory(userId, sessionId = null, limit = 50) {
     try {
       let query = this.supabase
-        .from('chat_history')
+        .from('user_chat_history')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
@@ -151,7 +151,7 @@ class ChatHistoryManager {
       
       // Call the PostgreSQL function
       const { data: results, error } = await this.supabase
-        .rpc('search_chat_history', {
+        .rpc('search_user_chat_history', {
           query_embedding: queryEmbedding,
           user_id: userId,
           session_id: sessionId,
@@ -363,7 +363,7 @@ class ChatHistoryManager {
       }
 
       const { error } = await this.supabase
-        .from('chat_history')
+        .from('user_chat_history')
         .delete()
         .match(condition);
 

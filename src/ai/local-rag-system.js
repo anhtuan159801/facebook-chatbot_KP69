@@ -43,13 +43,13 @@ class LocalRAGSystem {
         .select(`
           id,
           procedure_code,
-          full_procedure_content,
+          full_content,
           procedure_title,
           ministry_name,
           source_url,
           metadata
         `)
-        .textSearch('full_procedure_content', userQuery, {
+        .textSearch('full_content', userQuery, {
           type: 'websearch',
           config: 'english'
         })
@@ -72,7 +72,7 @@ class LocalRAGSystem {
       // Format results to match the expected structure
       const formattedResults = relevantDocs.map(doc => ({
         id: doc.id,
-        content: doc.full_procedure_content,
+        content: doc.full_content,
         similarity: 0.5, // Placeholder similarity score
         doc_id: doc.id,
         source_url: doc.source_url,
@@ -151,7 +151,7 @@ class LocalRAGSystem {
         }
       } else {
         // Use the source_url from the doc if available, otherwise try to extract from content
-        const primaryUrl = doc.source_url || this.extractUrlFromContent(doc.full_procedure_content);
+        const primaryUrl = doc.source_url || this.extractUrlFromContent(doc.full_content);
         if (primaryUrl) {
           formatted += `🌐 Thông tin chi tiết: ${primaryUrl}\n`;
         }
@@ -162,7 +162,7 @@ class LocalRAGSystem {
         formatted += `📋 Form link: ${doc.metadata.form_link}\n`;
       }
 
-      formatted += `📄 Nội dung đầy đủ: ${doc.full_procedure_content.substring(0, 600)}...\n\n`;
+      formatted += `📄 Nội dung đầy đủ: ${doc.full_content.substring(0, 600)}...\n\n`;
 
       return formatted;
     }).join('');

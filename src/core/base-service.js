@@ -991,11 +991,11 @@ class BaseChatbotService {
                         }
                     });
                 } else {
-                    // Fallback to conversations table if user_chat_history doesn't exist or has issues
+                    // Fallback to user_chat_history table if primary query has issues
                     const { data: convHistory, error: convError } = await supabase
-                        .from('conversations')
-                        .select('message_content, message_type, created_at')
-                        .eq('user_id', userId)
+                        .from('user_chat_history')
+                        .select('user_request as message_content, chatbot_response, created_at')
+                        .eq('facebook_user_id', userId)
                         .order('created_at', { ascending: false })
                         .limit(20);
 

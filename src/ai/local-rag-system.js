@@ -121,9 +121,9 @@ class LocalRAGSystem {
     // Original formatting for non-administrative content - now connecting to Supabase data
     return knowledgeDocs.map(doc => {
       // Extract structured information from the document content
-      const structuredInfo = this.extractStructuredInfo(doc.full_procedure_content);
+      const structuredInfo = this.extractStructuredInfo(doc.full_content);
       // Extract URLs from the document content
-      const urls = this.extractUrlsFromContent(doc.full_procedure_content);
+      const urls = this.extractUrlsFromContent(doc.full_content);
 
       let formatted = `🔍 THỦ TỤC HÀNH CHÍNH CHI TIẾT:\n`;
       formatted += `📝 Mã thủ tục: ${doc.procedure_code || structuredInfo.procedureCode || 'N/A'}\n`;
@@ -131,8 +131,8 @@ class LocalRAGSystem {
       formatted += `🏢 Bộ/Ngành: ${doc.ministry_name || 'N/A'}\n`;
       formatted += `⏰ Thời hạn giải quyết: ${structuredInfo.processingTime || 'N/A'}\n`;
       formatted += `💰 Phí, lệ phí: ${structuredInfo.fee || 'N/A'}\n`;
-      formatted += `📋 Thành phần hồ sơ: ${structuredInfo.documents ? structuredInfo.documents.substring(0, 200) + '...' : 'N/A'}\n`;
-      formatted += `📋 Trình tự thực hiện: ${structuredInfo.procedureSteps ? structuredInfo.procedureSteps.substring(0, 300) + '...' : 'N/A'}\n`;
+      formatted += `📋 Thành phần hồ sơ: ${structuredInfo.documents && typeof structuredInfo.documents === 'string' ? structuredInfo.documents.substring(0, 200) + '...' : 'N/A'}\n`;
+      formatted += `📋 Trình tự thực hiện: ${structuredInfo.procedureSteps && typeof structuredInfo.procedureSteps === 'string' ? structuredInfo.procedureSteps.substring(0, 300) + '...' : 'N/A'}\n`;
 
       // Display form link if available
       if (structuredInfo.formLink) {
@@ -162,7 +162,7 @@ class LocalRAGSystem {
         formatted += `📋 Form link: ${doc.metadata.form_link}\n`;
       }
 
-      formatted += `📄 Nội dung đầy đủ: ${doc.full_content.substring(0, 600)}...\n\n`;
+      formatted += `📄 Nội dung đầy đủ: ${doc.full_content ? doc.full_content.substring(0, 600) : 'N/A'}...\n\n`;
 
       return formatted;
     }).join('');

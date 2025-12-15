@@ -36,6 +36,15 @@ class KnowledgeRAGProcessor {
 
       console.log(`📁 Processing knowledge files from: ${absolutePath}`);
 
+      // Check if the directory exists before trying to read it
+      try {
+        await fs.access(absolutePath);
+      } catch (error) {
+        console.log(`⚠️ Knowledge directory does not exist: ${absolutePath}`);
+        console.log(`📁 Knowledge files will be loaded from Supabase database instead`);
+        return; // Exit early if directory doesn't exist
+      }
+
       const allMinistries = await fs.readdir(absolutePath);
 
       for (const ministry of allMinistries) {

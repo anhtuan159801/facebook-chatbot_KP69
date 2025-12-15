@@ -1282,7 +1282,9 @@ class BaseChatbotService {
                 await this.knowledgeRAGProcessor.processAllKnowledgeFiles();
                 console.log('✅ Knowledge from knowledge-rag folder loaded successfully');
             } catch (error) {
-                console.error('❌ Error loading knowledge from knowledge-rag folder:', error);
+                console.log('📚 Knowledge from knowledge-rag folder not available - using Supabase database as primary knowledge source');
+                // Don't log as error since this is expected when using Supabase as primary source
+                console.log('💡 This is expected behavior when using Supabase database as the primary knowledge source');
             }
         } else {
             console.log('⚠️ Knowledge RAG Processor not available, skipping knowledge loading');

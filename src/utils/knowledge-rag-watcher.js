@@ -111,7 +111,11 @@ class KnowledgeRAGWatcher {
       await this.processor.processAllKnowledgeFiles();
       this.logger.info('Completed processing all knowledge files');
     } catch (error) {
-      this.logger.error('Error processing all knowledge files:', error);
+      if (error.code === 'ENOENT') {
+        this.logger.info('📁 Knowledge directory not found - using Supabase database as primary knowledge source');
+      } else {
+        this.logger.error('Error processing all knowledge files:', error);
+      }
     }
   }
 

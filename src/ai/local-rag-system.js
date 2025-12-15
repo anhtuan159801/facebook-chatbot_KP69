@@ -37,13 +37,13 @@ class LocalRAGSystem {
         return await this.getRelevantKnowledgeFromFileSystem(userQuery, category);
       }
 
-      // Use text search on the government procedures knowledge base table with full procedure content
+      // Use text search on the government procedures knowledge table with full procedure content
       let query = this.supabase
-        .from('government_procedures_knowledge_base')
+        .from('government_procedures_knowledge')
         .select(`
           id,
           procedure_code,
-          procedure_content as full_procedure_content,
+          full_procedure_content,
           procedure_title,
           ministry_name,
           source_url,

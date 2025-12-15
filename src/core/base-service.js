@@ -31,6 +31,7 @@ const {
     createTimeoutWrapper
 } = require('../ai/ai-models');
 
+const { createClient } = require('@supabase/supabase-js');
 const { createLogger } = require('../utils/logger');
 const aiProviderManager = require('../ai/ai-provider-manager');
 const LocalRAGSystem = require('../ai/local-rag-system');
@@ -61,7 +62,10 @@ class BaseChatbotService {
                 rejectUnauthorized: false
             }
         });
-        
+
+        // Initialize Supabase client
+        this.supabase = null;
+
         // Initialize AI
         this.initializeAI();
         
@@ -1004,24 +1008,41 @@ class BaseChatbotService {
 
                 if (error) {
                     console.error('Supabase error fetching history:', error);
-                    // Fallback to old method
-                    const query = {
-                        text: `
-                            SELECT message, role FROM (
-                                SELECT message, 'user' as role, created_at FROM conversations WHERE user_id = $1 AND message IS NOT NULL
-                                UNION ALL
-                                SELECT bot_response as message, 'model' as role, created_at FROM conversations WHERE user_id = $1 AND bot_response IS NOT NULL
-                            ) as history
-                            ORDER BY created_at DESC
-                            LIMIT 20
-                        `,
-                        values: [userId],
-                    };
+                    // Fallback to user_chat_history table in Supabase
                     try {
-                        const { rows } = await this.pool.query(query);
-                        return rows.reverse().map(row => ({ role: row.role, parts: [{ text: row.message }] }));
-                    } catch (oldError) {
-                        console.error('Error fetching history:', oldError);
+                        // Try Supabase user_chat_history table via direct query
+                        const supabase = this.getSupabaseClient();
+                        const { data: chatHistory, error: historyError } = await supabase
+                            .from('user_chat_history')
+                            .select('user_request, chatbot_response, created_at')
+                            .eq('facebook_user_id', userId)
+                            .order('created_at', { ascending: false })
+                            .limit(20);
+
+                        if (historyError) {
+                            console.error('Error fetching user_chat_history from Supabase:', historyError);
+                            return [];
+                        }
+
+                        // Format to match expected structure
+                        const formattedHistory = [];
+                        chatHistory.reverse().forEach(item => {
+                            if (item.user_request) {
+                                formattedHistory.push({
+                                    role: 'user',
+                                    parts: [{ text: item.user_request }]
+                                });
+                            }
+                            if (item.chatbot_response) {
+                                formattedHistory.push({
+                                    role: 'assistant',
+                                    parts: [{ text: item.chatbot_response }]
+                                });
+                            }
+                        });
+                        return formattedHistory;
+                    } catch (supabaseError) {
+                        console.error('Error fetching history from Supabase:', supabaseError);
                         return [];
                     }
                 }
@@ -1061,13 +1082,6 @@ class BaseChatbotService {
         try {
             // Use Supabase for conversation history if available, otherwise fallback to old method
             if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-                // Initialize Supabase client for history operations
-                const { createClient } = require('@supabase/supabase-js');
-                const supabase = createClient(
-                    process.env.SUPABASE_URL,
-                    process.env.SUPABASE_KEY
-                );
-
                 // Use the ChatHistoryService to store in user_chat_history table
                 const chatHistoryService = new ChatHistoryService();
 
@@ -1090,7 +1104,17 @@ class BaseChatbotService {
             }
         }
     }
-    
+
+    getSupabaseClient() {
+        if (!this.supabase) {
+            this.supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY
+            );
+        }
+        return this.supabase;
+    }
+
     async callSendAPI(sender_psid, response, maxRetries = 3) {
         const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
         const request_body = {

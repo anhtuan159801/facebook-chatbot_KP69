@@ -14,16 +14,16 @@ async function migrateDataToSupabase() {
     console.log('🔄 Starting data migration to Supabase with clean schema...\n');
 
     // Check if Supabase is configured
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
         console.error('❌ Supabase configuration not found in environment variables');
-        console.log('Please add SUPABASE_URL and SUPABASE_ANON_KEY to your .env file');
+        console.log('Please add SUPABASE_URL and SUPABASE_KEY to your .env file');
         return;
     }
 
     // Initialize Supabase client
     const supabase = createClient(
         process.env.SUPABASE_URL,
-        process.env.SUPABASE_ANON_KEY
+        process.env.SUPABASE_KEY
     );
 
     console.log('✅ Supabase client initialized\n');

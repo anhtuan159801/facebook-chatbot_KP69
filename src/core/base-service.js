@@ -935,12 +935,12 @@ class BaseChatbotService {
     async getConversationHistory(userId) {
         try {
             // Use Supabase for conversation history if available, otherwise fallback to old method
-            if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+            if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
                 // Initialize Supabase client for history operations
                 const { createClient } = require('@supabase/supabase-js');
                 const supabase = createClient(
                     process.env.SUPABASE_URL,
-                    process.env.SUPABASE_ANON_KEY
+                    process.env.SUPABASE_KEY
                 );
 
                 // First, ensure the user exists in the users table
@@ -1060,12 +1060,12 @@ class BaseChatbotService {
     async saveConversation(userId, userMessage, botResponse) {
         try {
             // Use Supabase for conversation history if available, otherwise fallback to old method
-            if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+            if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
                 // Initialize Supabase client for history operations
                 const { createClient } = require('@supabase/supabase-js');
                 const supabase = createClient(
                     process.env.SUPABASE_URL,
-                    process.env.SUPABASE_ANON_KEY
+                    process.env.SUPABASE_KEY
                 );
 
                 // Use the ChatHistoryService to store in user_chat_history table

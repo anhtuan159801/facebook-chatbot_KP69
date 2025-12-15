@@ -13,11 +13,11 @@ async function testSystem() {
     // Test 1: Check if Supabase is configured
     console.log('1. Checking Supabase configuration...');
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
         console.log('❌ Supabase configuration not found. Please check your .env file.');
-        console.log('   Ensure SUPABASE_URL and SUPABASE_ANON_KEY are set.\n');
+        console.log('   Ensure SUPABASE_URL and SUPABASE_KEY are set.\n');
         return;
     } else {
         console.log('✅ Supabase configuration found\n');

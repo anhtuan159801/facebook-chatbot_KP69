@@ -15,7 +15,7 @@ async function verifySystemSetup() {
     console.log('✅ Checking environment variables...');
     const requiredEnvVars = [
         'SUPABASE_URL', 
-        'SUPABASE_ANON_KEY',
+        'SUPABASE_KEY',
         'PAGE_ACCESS_TOKEN',
         'VERIFY_TOKEN'
     ];
@@ -60,12 +60,12 @@ async function verifySystemSetup() {
     }
     
     // Check 3: Supabase connection (if configured)
-    if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
         console.log('\n✅ Testing Supabase connection...');
         try {
             const supabase = createClient(
                 process.env.SUPABASE_URL,
-                process.env.SUPABASE_ANON_KEY
+                process.env.SUPABASE_KEY
             );
             
             // Test connection by trying to access the users table

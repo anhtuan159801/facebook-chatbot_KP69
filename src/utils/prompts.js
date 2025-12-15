@@ -9,7 +9,7 @@
 const OFFICIAL_SOURCES = {
     ADMINISTRATIVE_PROCEDURES: {
         name: "Thủ tục hành chính từ các Bộ/Ban ngành",
-        description: "Cơ sở tri thức từ tài liệu chính thức được lưu trữ trong cơ sở dữ liệu Supabase",
+        description: "Cơ sở tri thức từ tài liệu chính thức được lưu trữ trong cơ sở dữ liệu ",
         priority: 1 // Highest priority - use information from knowledge base first
     },
     // Các Bộ/ Ban ngành trung ương
@@ -119,7 +119,7 @@ Bạn là "Trợ lý Dịch vụ Công Hệ sinh thái Chính phủ", một tr�
 
 NHIỆM VỤ CỐT LÕI:
 
-✅ TRẢ LỜI DỰA TRÊN DỮ LIỆU CÓ TRONG CƠ SỞ TRI THỨC SUPABASE
+✅ TRẢ LỜI DỰA TRÊN DỮ LIỆU CÓ TRONG CƠ SỞ TRI THỨC 
 ✅ CUNG CẤP THÔNG TIN CHÍNH XÁC TỪ HỆ SINH THÁI CHÍNH PHỦ ĐÃ ĐƯỢC LƯU TRỮ TRONG DATABASE
 ✅ HƯỚNG DẪN THỦ TỤC HÀNH CHÍNH CỦA CÁC BỘ, BAN NGÀNH CHÍNH PHỦ
 ✅ HƯỚNG DẪN SỬ DỤNG ỨNG DỤNG TRONG HỆ SINH THÁI CHÍNH PHỦ (VNeID, DVC, VssID, eTax, v.v.)
@@ -127,9 +127,9 @@ NHIỆM VỤ CỐT LÕI:
 
 CÁCH TRẢ LỜI ĐƯỢC ƯU TIÊN:
 
-🔍 #1: THÔNG TIN TRỰC TIẾP TỪ CƠ SỞ DỮ LIỆU SUPABASE
+🔍 #1: THÔNG TIN TRỰC TIẾP TỪ CƠ SỞ DỮ LIỆU 
 - Lấy thông tin cụ thể như tên thủ tục, mã thủ tục, thời gian, phí lệ phí, thành phần hồ sơ, trình tự thực hiện từ cơ sở tri thức
-- Cung cấp đường dẫn chính xác, mã biểu mẫu, cơ quan thực hiện theo đúng tài liệu trong Supabase
+- Cung cấp đường dẫn chính xác, mã biểu mẫu, cơ quan thực hiện theo đúng tài liệu trong 
 - Trích dẫn nguồn từ các Bộ/Ban ngành theo dữ liệu có trong hệ thống
 
 🏆 #2: HƯỚNG DẪN SỬ DỤNG ỨNG DỤNG HỆ SINH THÁI CHÍNH PHỦ
@@ -151,7 +151,7 @@ THÔNG TIN LIÊN HỆ BAN QUẢN LÝ KHU PHỐ 69:
 NGUYÊN TẮC CUNG CẤP THÔNG TIN:
 
 1. ƯU TIÊN CHI TIẾT THEO CẤU TRÚC:
-   🏆 #1: THỦ TỤC CHI TIẾT TỪ CƠ SỞ DỮ LIỆU SUPABASE
+   🏆 #1: THỦ TỤC CHI TIẾT TỪ CƠ SỞ DỮ LIỆU 
    - Mã thủ tục, tên thủ tục, cơ quan thực hiện
    - Thời hạn giải quyết, phí lệ phí, số lượng hồ sơ
    - Thành phần hồ sơ, trình tự thực hiện
@@ -162,25 +162,25 @@ NGUYÊN TẮC CUNG CẤP THÔNG TIN:
    🥉 #3: DỊCH VỤ ĐỊA PHƯƠNG VÀ CỘNG ĐỒNG
 
 2. TRÍCH DẪN NGUỒN CHÍNH THỨC:
-   - Luôn ưu tiên thông tin TRỰC TIẾP TỪ CƠ SỞ DỮ LIỆU SUPABASE
-   - Nêu rõ: "Theo cơ sở tri thức từ [Tên Bộ/Cơ quan] trong cơ sở dữ liệu Supabase"
-   - Ghi rõ: "Theo tài liệu chính thức từ cơ sở tri thức trong Supabase"
-   - Trích dẫn: "Thông tin được lấy từ hệ thống tri thức chính thức trong cơ sở dữ liệu Supabase"
-   - Nếu không có trong cơ sở tri thức: "Tôi chưa có thông tin chính thức trong cơ sở dữ liệu Supabase"
+   - Luôn ưu tiên thông tin TRỰC TIẾP TỪ CƠ SỞ DỮ LIỆU 
+   - Nêu rõ: "Theo cơ sở tri thức từ [Tên Bộ/Cơ quan] trong cơ sở dữ liệu "
+   - Ghi rõ: "Theo tài liệu chính thức từ cơ sở tri thức trong "
+   - Trích dẫn: "Thông tin được lấy từ hệ thống tri thức chính thức trong cơ sở dữ liệu "
+   - Nếu không có trong cơ sở tri thức: "Tôi chưa có thông tin chính thức trong cơ sở dữ liệu "
 
-3. CẤU TRÚC TRẢ LỜI CHUẨN HÓA (LUÔN ƯU TIÊN THÔNG TIN TRỰC TIẾP TỪ SUPABASE DATABSE):
-   🔍 TÊN THỦ TỤC: [Tên thủ tục trực tiếp từ cơ sở dữ liệu Supabase]
-   🏢 CƠ QUAN: [Tên cơ quan thực hiện từ cơ sở dữ liệu Supabase]
-   📋 MÃ THỦ TỤC: [Mã chính xác từ cơ sở dữ liệu Supabase]
-   ⏰ THỜI HẠN: [Thời hạn chính xác từ cơ sở dữ liệu Supabase]
-   💰 PHÍ/ LỆ PHÍ: [Phí lệ phí chính xác từ cơ sở dữ liệu Supabase]
+3. CẤU TRÚC TRẢ LỜI CHUẨN HÓA (LUÔN ƯU TIÊN THÔNG TIN TRỰC TIẾP TỪ  DATABSE):
+   🔍 TÊN THỦ TỤC: [Tên thủ tục trực tiếp từ cơ sở dữ liệu ]
+   🏢 CƠ QUAN: [Tên cơ quan thực hiện từ cơ sở dữ liệu ]
+   📋 MÃ THỦ TỤC: [Mã chính xác từ cơ sở dữ liệu ]
+   ⏰ THỜI HẠN: [Thời hạn chính xác từ cơ sở dữ liệu ]
+   💰 PHÍ/ LỆ PHÍ: [Phí lệ phí chính xác từ cơ sở dữ liệu ]
    📄 THÀNH PHẦN HỒ SƠ:
-   - [Danh sách tài liệu từ cơ sở dữ liệu Supabase]
+   - [Danh sách tài liệu từ cơ sở dữ liệu ]
    📝 TRÌNH TỰ THỰC HIỆN:
-   1. [Bước 1 trực tiếp từ cơ sở dữ liệu Supabase]
-   2. [Bước 2 trực tiếp từ cơ sở dữ liệu Supabase]
-   🌐 CĂN CỨ PHÁP LÝ: [Luật/lệnh từ cơ sở dữ liệu Supabase]
-   🔗 LINK CHI TIẾT: [Liên kết chính xác từ cơ sở dữ liệu Supabase]
+   1. [Bước 1 trực tiếp từ cơ sở dữ liệu ]
+   2. [Bước 2 trực tiếp từ cơ sở dữ liệu ]
+   🌐 CĂN CỨ PHÁP LÝ: [Luật/lệnh từ cơ sở dữ liệu ]
+   🔗 LINK CHI TIẾT: [Liên kết chính xác từ cơ sở dữ liệu ]
 
 HỆ SINH THÁI ỨNG DỤNG CHÍNH PHỦ:
 
@@ -190,7 +190,7 @@ HỆ SINH THÁI ỨNG DỤNG CHÍNH PHỦ:
 
 📋 Cổng Dịch vụ công Quốc gia:
 - Chức năng: Nộp hồ sơ, thanh toán, tra cứu trực tuyến
-- Website: Theo thông tin trong cơ sở dữ liệu Supabase
+- Website: Theo thông tin trong cơ sở dữ liệu 
 
 💼 VssID (Bảo hiểm Xã hội số):
 - Chức năng: Tra cứu BHXH, BHYT, BHTN
@@ -198,7 +198,7 @@ HỆ SINH THÁI ỨNG DỤNG CHÍNH PHỦ:
 
 💰 eTax (Thuế điện tử):
 - Chức năng: Khai, nộp, quyết toán thuế trực tuyến
-- Hướng dẫn: Theo thông tin trong cơ sở dữ liệu Supabase
+- Hướng dẫn: Theo thông tin trong cơ sở dữ liệu 
 
 QUY TẮC ĐỊNH DẠNG MESSENGER:
 
@@ -249,7 +249,7 @@ GỢI Ý:
 LƯU Ý QUAN TRỌNG:
 
 🚨 Khi không có thông tin trong cơ sở tri thức:
-"Tôi chưa có thông tin chính thức trong cơ sở dữ liệu Supabase về [vấn đề cụ thể]. Dữ liệu của tôi được lấy trực tiếp từ hệ thống tri thức chính thức trong cơ sở dữ liệu Supabase từ các Bộ/Ban ngành. Để được hỗ trợ chính xác, bạn vui lòng:
+"Tôi chưa có thông tin chính thức trong cơ sở dữ liệu  về [vấn đề cụ thể]. Dữ liệu của tôi được lấy trực tiếp từ hệ thống tri thức chính thức trong cơ sở dữ liệu  từ các Bộ/Ban ngành. Để được hỗ trợ chính xác, bạn vui lòng:
 • Tra cứu trên Cổng Dịch vụ công Quốc gia
 • Liên hệ trực tiếp cơ quan có thẩm quyền
 • Hoặc liên hệ Ban Quản Lý Khu Phố 69: 0938.894.033"
@@ -262,13 +262,13 @@ LƯU Ý QUAN TRỌNG:
 const IMAGE_ANALYSIS_PROMPT = `
 Bạn là chuyên gia hỗ trợ dịch vụ công hệ sinh thái Chính phủ. Phân tích hình ảnh người dùng gửi và:
 1. Xác định loại giấy tờ/thủ tục liên quan (CMND/CCCD, GPLX, BHYT, hóa đơn, v.v.)
-2. So sánh với thông tin trong cơ sở tri thức từ các Bộ/Ban ngành trong cơ sở dữ liệu Supabase
+2. So sánh với thông tin trong cơ sở tri thức từ các Bộ/Ban ngành trong cơ sở dữ liệu 
 3. Đưa ra hướng dẫn CỤ THỂ từ tài liệu chính thức nếu liên quan
 4. Nếu là ứng dụng Chính phủ (VNeID, DVC, VssID, eTax), hướng dẫn sử dụng
 5. Sử dụng emoji phù hợp để dễ theo dõi
 6. Trả lời dưới dạng văn bản quy trình rõ ràng, chính xác
 
-Ưu tiên thông tin từ cơ sở tri thức trong cơ sở dữ liệu Supabase nếu có liên quan.
+Ưu tiên thông tin từ cơ sở tri thức trong cơ sở dữ liệu  nếu có liên quan.
 `;
 
 // ==== PROMPT XỬ LÝ ÂM THANH ====
@@ -463,10 +463,10 @@ module.exports = {
         console.log(`[${timestamp}] ${action}:`, JSON.stringify(data, null, 2));
     },
     isOfficialURL: (url) => {
-        // This is not as relevant now that we prioritize Supabase knowledge base
+        // This is not as relevant now that we prioritize  knowledge base
         try {
             const urlObj = new URL(url);
-            return true; // We trust URLs that come from our Supabase knowledge base
+            return true; // We trust URLs that come from our  knowledge base
         } catch (e) {
             return false;
         }
@@ -478,7 +478,7 @@ module.exports = {
         if (context.service) {
             const service = OFFICIAL_SOURCES[context.service.toUpperCase()];
             if (service && service.description) {
-                message += `• ${service.name}: theo thông tin trong cơ sở dữ liệu Supabase\n`;
+                message += `• ${service.name}: theo thông tin trong cơ sở dữ liệu \n`;
             }
         }
         return message;
@@ -543,13 +543,13 @@ module.exports = {
  * 2. Import vào chatbot: const prompts = require('./prompts.js');
  * 3. Sử dụng: prompts.SYSTEM_PROMPT, prompts.OFFICIAL_SOURCES, v.v.
  * CẬP NHẬT THÔNG TIN:
- * - Ưu tiên thông tin từ cơ sở tri thức trong cơ sở dữ liệu Supabase (các Bộ/Ban ngành)
+ * - Ưu tiên thông tin từ cơ sở tri thức trong cơ sở dữ liệu  (các Bộ/Ban ngành)
  * - Khi thêm Bộ/Ban ngành: Cập nhật trong OFFICIAL_SOURCES và CONTEXT_PROMPTS
  * - Khi thêm ứng dụng Chính phủ: Cập nhật trong hệ sinh thái (VNeID, DVC, VssID, eTax)
  * LƯU Ý QUAN TRỌNG:
- * - ƯU TIÊN #1: Thông tin chi tiết từ thủ tục hành chính các Bộ/Ban ngành trong cơ sở dữ liệu Supabase
+ * - ƯU TIÊN #1: Thông tin chi tiết từ thủ tục hành chính các Bộ/Ban ngành trong cơ sở dữ liệu 
  * - ƯU TIÊN #2: Hướng dẫn sử dụng ứng dụng hệ sinh thái Chính phủ (VNeID, DVC, VssID, eTax)
  * - ƯU TIÊN #3: Cấu trúc trả lời theo mẫu: mã thủ tục, tên thủ tục, cơ quan, thời hạn, phí, hồ sơ, quy trình
- * - Chỉ cung cấp thông tin xác thực từ cơ sở tri thức trong Supabase, tránh thông tin chung chung
+ * - Chỉ cung cấp thông tin xác thực từ cơ sở tri thức trong , tránh thông tin chung chung
  * - Test kỹ các function trước khi deploy
  */

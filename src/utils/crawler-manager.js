@@ -13,10 +13,10 @@ class CrawlerManager {
     if (!this._supabase) {
       // Try both formats: with and without NEXT_PUBLIC_ prefix
       const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const supabaseAnonKey = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
       if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_ANON_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) environment variables are required.');
+        throw new Error('SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) environment variables are required.');
       }
       this._supabase = require('@supabase/supabase-js').createClient(
         supabaseUrl,
@@ -429,11 +429,11 @@ class CrawlerManager {
 
     // Check if Supabase is properly configured before attempting to store
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseAnonKey = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.warn('⚠️  Supabase is not configured. Skipping storage of crawled documents.');
-      console.warn('📋 To store documents, please set SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_ANON_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) in your .env file.');
+      console.warn('📋 To store documents, please set SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) in your .env file.');
       console.log(`📝 Crawled ${documents.length} documents that would have been stored.`);
       return;
     }

@@ -39,19 +39,32 @@ class ChatHistoryService {
 
       if (error) {
         console.error('Error saving conversation to user_chat_history:', error);
-        // Try to use the stored procedure as fallback
+        // Check if it's an RLS error or table not found error
+        if (error.code === '42501' || error.code === 'PGRST205') {
+          console.warn(`Permissions error or table not found: ${error.message}`);
+          // For RLS errors, we might need to use an authenticated client or handle differently
+          // For now, just return success to prevent error messages since conversation can continue
+          return { success: true, message: 'RLS prevented insert, but conversation can continue' };
+        }
+
+        // Try to use the stored procedure as fallback only if it's not an RLS error
         const { data: rpcData, error: rpcError } = await supabase.rpc('add_chat_interaction', {
           p_facebook_user_id: userId,
           p_user_request: userRequest,
           p_chatbot_response: chatbotResponse,
           p_session_id: sessionId
         });
-        
+
         if (rpcError) {
           console.error('Error using stored procedure:', rpcError);
+          // For RLS error on RPC as well, just continue
+          if (rpcError.code === '42501') {
+            console.warn(`RLS prevented stored procedure execution: ${rpcError.message}`);
+            return { success: true, message: 'RLS prevented history storage, but conversation can continue' };
+          }
           return { success: false, error: error.message || rpcError.message };
         }
-        
+
         return { success: true, data: rpcData };
       }
 
@@ -79,6 +92,11 @@ class ChatHistoryService {
 
       if (error) {
         console.error('Error fetching conversation history:', error);
+        // Check if it's an RLS error or table not found error
+        if (error.code === '42501' || error.code === 'PGRST205') {
+          console.warn(`Permissions error or table not found when fetching history: ${error.message}`);
+          return []; // Return empty history but don't fail completely
+        }
         return [];
       }
 

@@ -51,7 +51,7 @@ A comprehensive chatbot system for Vietnamese government services and administra
 ```bash
 # Supabase configuration
 SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_KEY=your_supabase_service_role_key
 
 # Facebook Messenger
 FB_PAGE_ACCESS_TOKEN=your_page_token

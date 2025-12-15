@@ -15,7 +15,7 @@ Update your `.env` file with the following:
 ```
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_service_role_key
-SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
 # For direct database connection (if needed)
 DIRECT_DATABASE_URL=your_direct_database_url

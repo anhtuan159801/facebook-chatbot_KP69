@@ -49,7 +49,7 @@ The repository includes:
 2. Connect Koyeb to your GitHub repository
 3. Configure the following environment variables:
    - SUPABASE_URL: Your Supabase project URL
-   - SUPABASE_ANON_KEY: Your Supabase anon key
+   - SUPABASE_KEY: Your Supabase service role key
    - DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME: PostgreSQL credentials
    - VERIFY_TOKEN: Your Facebook webhook verification token
    - PAGE_ACCESS_TOKEN: Your Facebook page access token

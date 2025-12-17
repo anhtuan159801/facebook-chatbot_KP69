@@ -1,13 +1,18 @@
 require('dotenv').config();
 const express = require('express');
-const { Pool } = require('pg');
-const { createLogger } = require('../../utils/logger');
+
+// Use the new optimized database manager
+const dbManager = require('../../utils/database-manager');
+
+// Use enhanced logger
+const { createLogger, ErrorHandler } = require('../../utils/enhanced-logger');
 const { ServiceCircuitBreaker } = require('../../utils/circuit-breaker');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Initialize logging and circuit breaker
+// Initialize enhanced logging and circuit breaker
 const logger = createLogger('LoadBalancer');
+const errorHandler = new ErrorHandler(logger);
 const circuitBreaker = new ServiceCircuitBreaker();
 
 // Note: Không import trực tiếp các module chatbot vì chúng chạy trên port khác nhau
@@ -52,16 +57,7 @@ const systemStatus = {
 };
 
 // ==== DATABASE CONNECTION ====
-const pool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
+// Using the new optimized database manager
 
 // ==== HEALTH CHECK SYSTEM ====
 class HealthChecker {
@@ -472,14 +468,13 @@ app.post('/force-switch', (req, res) => {
 // ==== GRACEFUL SHUTDOWN ====
 process.on('SIGTERM', async () => {
     console.log('🛑 Load Balancer shutting down...');
-    
+
     healthChecker.stop();
-    
-    if (pool) {
-        await pool.end();
-        console.log('📊 Database pool closed');
-    }
-    
+
+    // Use the new database manager for cleanup
+    await dbManager.closeAllConnections();
+    console.log('📊 Database connections closed');
+
     console.log('✅ Load Balancer shutdown completed');
     process.exit(0);
 });

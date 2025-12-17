@@ -7,8 +7,9 @@
 
 require('dotenv').config();
 const express = require('express');
-const { Pool } = require('pg');
-const ChatHistoryService = require('./chat-history-service');
+
+// Use the new optimized database manager
+const dbManager = require('../utils/database-manager');
 
 // Import centralized modules
 const {
@@ -32,54 +33,61 @@ const {
 } = require('../ai/ai-models');
 
 const { createClient } = require('@supabase/supabase-js');
-const { createLogger } = require('../utils/logger');
+
+// Use enhanced logger
+const { createLogger, ErrorHandler } = require('../utils/enhanced-logger');
 const aiProviderManager = require('../ai/ai-provider-manager');
-const LocalRAGSystem = require('../ai/local-rag-system');
+const EnhancedRAGSystem = require('../ai/enhanced-rag-system');
 const ChatHistoryManager = require('../utils/chat-history-manager');
 const KnowledgeManager = require('../utils/knowledge-manager');
+
+// Import new optimization modules
+const conversationCache = require('../utils/cache-manager');
+const aiResponseCache = require('../utils/ai-response-cache');
+const improvedCache = require('../utils/improved-cache');
+const SmartQueue = require('../utils/smart-queue');
+const healthMonitor = require('../utils/system-health-monitor');
 
 class BaseChatbotService {
     constructor(port, serviceName, aiProvider = 'gemini') {
         this.port = port;
         this.serviceName = serviceName;
         this.aiProvider = aiProvider;
-        
-        // Initialize logger
+
+        // Initialize enhanced logger
         this.logger = createLogger(serviceName);
-        
+        this.errorHandler = new ErrorHandler(this.logger);
+
         // Initialize Express app
         this.app = express();
         this.app.use(express.json());
-        
-        // Initialize database
-        this.pool = new Pool({
-            host: process.env.DB_HOST,
-            port: process.env.DB_PORT,
-            user: process.env.DB_USER,
-            password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME,
-            ssl: {
-                rejectUnauthorized: false
-            }
-        });
 
-        // Initialize Supabase client
+        // Use the new database manager (no need to initialize pool separately)
+        this.dbManager = dbManager;
+
+        // Initialize Supabase client via database manager
         this.supabase = null;
 
-        // Initialize AI
+        // Initialize AI with new router
         this.initializeAI();
-        
-        // Initialize state management
+
+        // Initialize state management with caching
         this.processingRequests = new Map();
         this.userSessions = new Map();
         this.dailyQuotaUsed = 0;
         this.DAILY_QUOTA_LIMIT = 45;
-        
-        // Initialize queue system
-        this.initializeQueue();
 
-        // Initialize RAG system
-        this.ragSystem = new LocalRAGSystem();
+        // Initialize new smart queue
+        this.requestQueue = new SmartQueue({
+            maxConcurrent: 5,
+            defaultDelay: 30000 // 30 seconds
+        });
+
+        // Initialize health monitoring
+        this.initializeHealthMonitoring();
+
+        // Initialize enhanced RAG system
+        this.ragSystem = new EnhancedRAGSystem();
 
         // Initialize Chat History Manager
         this.chatHistoryManager = new ChatHistoryManager();
@@ -111,238 +119,73 @@ class BaseChatbotService {
         // Setup graceful shutdown
         this.setupGracefulShutdown();
     }
-    
+
+    initializeHealthMonitoring() {
+        // Register service-specific health checks
+        healthMonitor.registerHealthCheck(
+            `${this.serviceName}-status`,
+            async () => {
+                try {
+                    // Check if the service is responding
+                    const status = {
+                        status: 'healthy',
+                        details: {
+                            serviceName: this.serviceName,
+                            port: this.port,
+                            activeRequests: this.processingRequests.size,
+                            userSessions: this.userSessions.size,
+                            uptime: process.uptime(),
+                            memory: process.memoryUsage(),
+                            dailyQuotaUsed: this.dailyQuotaUsed,
+                            dailyQuotaLimit: this.DAILY_QUOTA_LIMIT
+                        }
+                    };
+                    return status;
+                } catch (error) {
+                    return {
+                        status: 'unhealthy',
+                        details: { error: error.message }
+                    };
+                }
+            },
+            45000 // Check every 45 seconds
+        );
+
+        // Start monitoring if not already started
+        if (!global.healthMonitorStarted) {
+            healthMonitor.startMonitoring();
+            global.healthMonitorStarted = true;
+            console.log('🏥 Service health monitoring initialized');
+        }
+    }
+
     initializeAI() {
         try {
-            if (this.aiProvider === 'gemini') {
-                this.ai = AIFactory.createGeminiAI();
-            } else if (this.aiProvider === 'openrouter') {
-                this.ai = AIFactory.createOpenRouterAI();
-            } else {
-                throw new Error(`Unsupported AI provider: ${this.aiProvider}`);
-            }
-            
-            // Create AI call method with Smart Provider Manager
+            // Use the new AI Router for all AI operations
+            this.aiRouter = require('../ai/ai-router');
+
+            // Update the callAI method to use the new router with caching
             this.callAI = async (messages, sender_psid) => {
-                // Check if we should switch back to Gemini
-                aiProviderManager.checkForGeminiSwitch();
-                
-                const currentProvider = aiProviderManager.getCurrentProvider();
-                console.log(`🤖 Using AI Provider: ${currentProvider}`);
-                
-                try {
-                    let aiInstance;
-                    let providerName;
-                    
-                    // Get AI instance based on current provider
-                    switch (currentProvider) {
-                        case 'gemini':
-                            aiInstance = this.ai; // Use primary AI
-                            providerName = this.aiProvider;
-                            break;
-                        case 'openrouter':
-                            aiInstance = AIFactory.createOpenRouterAI();
-                            providerName = 'openrouter';
-                            break;
-                        case 'huggingface':
-                            aiInstance = AIFactory.createHuggingFaceAI();
-                            providerName = 'huggingface';
-                            break;
-                        default:
-                            throw new Error('No available AI provider');
-                    }
-                    
-                    // Call AI with current provider
-                    const result = await createTimeoutWrapper(
-                        createRetryWrapper(aiInstance.generateText.bind(aiInstance), 2, 1000),
-                        30000
-                    )(messages, sender_psid);
-                    
-                    // Handle success
-                    aiProviderManager.handleProviderSuccess(currentProvider);
-                    console.log(`✅ ${providerName} request successful`);
-                    return result;
-                    
-                } catch (error) {
-                    console.log(`❌ ${currentProvider} failed:`, error.message);
-                    
-                    // Handle provider error
-                    aiProviderManager.handleProviderError(currentProvider, error);
-                    
-                    // Get new provider after switch
-                    const newProvider = aiProviderManager.getCurrentProvider();
-                    
-                    if (newProvider === 'error') {
-                        console.log('❌ All AI providers failed, using error message');
-                        return getErrorMessage('SYSTEM_ERROR');
-                    }
-                    
-                    // Retry with new provider
-                    console.log(`🔄 Retrying with new provider: ${newProvider}`);
-                    return await this.callAI(messages, sender_psid);
-                }
+                return await this.aiRouter.routeAIRequestWithCaching(messages, sender_psid);
             };
-            
-            // Audio transcription with proper conversion and multi-language support
+
+            // Update audio transcription to use the new router
             this.transcribeAudio = async (audioBuffer, mimeType) => {
-                try {
-                    console.log('🎵 Audio received, processing with Hugging Face...');
-
-                    // Step 1: Try Hugging Face with proper audio conversion
-                    try {
-                        const huggingFaceAI = AIFactory.createHuggingFaceAI();
-
-                        // Convert MP3 to WAV if needed
-                        let processedBuffer = audioBuffer;
-                        let processedMimeType = mimeType;
-
-                        if (mimeType === 'audio/mp4' || mimeType === 'audio/mpeg') {
-                            console.log('🔄 Converting MP3/MP4 to WAV for Hugging Face...');
-                            // For now, use the buffer as-is but change content type
-                            processedMimeType = 'audio/wav';
-                        }
-
-                        // First transcribe without language specification, then determine language
-                        const transcript = await huggingFaceAI.transcribeAudio(processedBuffer, processedMimeType);
-                        console.log('✅ Hugging Face transcription successful');
-
-                        // Detect language of the transcript
-                        const detectedLanguage = this.detectMessageLanguage(transcript);
-                        console.log(`🌐 Detected language: ${detectedLanguage}`);
-
-                        return transcript;
-
-                    } catch (hfError) {
-                        console.log('⚠️ Hugging Face failed, trying OpenRouter fallback...');
-                        
-                        // Step 2: Fallback to OpenRouter
-                        const openRouterAI = AIFactory.createOpenRouterAI();
-                        const transcript = await openRouterAI.generateText([
-                            {
-                                role: "user",
-                                content: "Hãy chuyển đổi nội dung âm thanh này thành văn bản tiếng Việt. Nếu không thể xử lý, hãy trả lời: 'Xin lỗi, tôi không thể nghe rõ nội dung âm thanh. Vui lòng gửi tin nhắn văn bản để tôi có thể hỗ trợ bạn tốt hơn.'"
-                            }
-                        ]);
-                        
-                        return transcript || "Xin lỗi, tôi không thể xử lý file âm thanh này. Vui lòng gửi tin nhắn văn bản thay thế.";
-                    }
-                    
-                } catch (error) {
-                    console.log('⚠️ All audio transcription methods failed, using fallback message');
-                    return "Cảm ơn bạn đã gửi tin nhắn âm thanh! Hiện tại tôi chưa thể xử lý file âm thanh. Vui lòng gửi tin nhắn văn bản để tôi có thể hỗ trợ bạn tốt hơn.";
-                }
+                return await this.aiRouter.transcribeAudio(audioBuffer, mimeType);
             };
-            
-            console.log(`✅ ${this.serviceName}: AI initialized with ${this.aiProvider}`);
-            
-            // Start periodic check for Gemini switch (every 5 minutes)
-            this.geminiCheckInterval = setInterval(() => {
-                aiProviderManager.checkForGeminiSwitch();
-            }, 5 * 60 * 1000); // 5 minutes
-            
+
+            console.log(`✅ ${this.serviceName}: AI initialized with new router`);
+
+            // The periodic check is now handled within the router itself
+            // We can remove the separate interval as it's already set up there
+
         } catch (error) {
             console.error(`❌ ${this.serviceName}: Failed to initialize AI:`, error);
             throw error;
         }
     }
     
-    initializeQueue() {
-        // Queue system for concurrent request management
-        this.requestQueue = {
-            maxConcurrent: 5,
-            activeRequests: new Set(),
-            waitingQueue: [],
-            delayMs: 60000,
-            
-            async addRequest(requestId, requestHandler, sender_psid = null) {
-                return new Promise((resolve, reject) => {
-                    const request = {
-                        id: requestId,
-                        handler: requestHandler,
-                        resolve,
-                        reject,
-                        timestamp: Date.now(),
-                        sender_psid: sender_psid
-                    };
-
-                    if (this.activeRequests.size < this.maxConcurrent) {
-                        this.processRequest(request);
-                    } else {
-                        const queuePosition = this.waitingQueue.length + 1;
-                        console.log(`⏳ Request ${requestId} queued (position ${queuePosition})`);
-                        
-                        if (sender_psid) {
-                            this.notifyUserWaiting(sender_psid, queuePosition);
-                        }
-                        
-                        this.waitingQueue.push(request);
-                        this.scheduleProcessing();
-                    }
-                });
-            },
-            
-            async notifyUserWaiting(sender_psid, queuePosition) {
-                try {
-                    const message = {
-                        text: `⏳ Xin chào! Hiện tại hệ thống đang xử lý nhiều yêu cầu. Bạn đang ở vị trí ${queuePosition} trong hàng chờ. Vui lòng đợi khoảng 1-2 phút, mình sẽ phản hồi ngay khi đến lượt! 🙏`
-                    };
-                    
-                    await this.callSendAPI(sender_psid, message);
-                } catch (error) {
-                    console.error(`❌ Error sending waiting notification:`, error);
-                }
-            },
-            
-            async processRequest(request) {
-                this.activeRequests.add(request.id);
-                console.log(`🚀 Processing request ${request.id} (${this.activeRequests.size}/${this.maxConcurrent})`);
-
-                const timeoutId = setTimeout(() => {
-                    if (this.activeRequests.has(request.id)) {
-                        console.log(`⏰ Request ${request.id} timeout`);
-                        this.activeRequests.delete(request.id);
-                        request.reject(new Error('Request timeout'));
-                        this.processNextInQueue();
-                    }
-                }, 300000);
-
-                try {
-                    const result = await request.handler();
-                    clearTimeout(timeoutId);
-                    request.resolve(result);
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    console.error(`❌ Request ${request.id} failed:`, error);
-                    request.reject(error);
-                } finally {
-                    this.activeRequests.delete(request.id);
-                    console.log(`✅ Completed request ${request.id} (${this.activeRequests.size}/${this.maxConcurrent})`);
-                    this.processNextInQueue();
-                }
-            },
-            
-            processNextInQueue() {
-                if (this.waitingQueue.length > 0 && this.activeRequests.size < this.maxConcurrent) {
-                    const nextRequest = this.waitingQueue.shift();
-                    this.processRequest(nextRequest);
-                }
-            },
-            
-            scheduleProcessing() {
-                setTimeout(() => {
-                    this.processNextInQueue();
-                }, this.delayMs);
-            },
-            
-            getStatus() {
-                return {
-                    active: this.activeRequests.size,
-                    waiting: this.waitingQueue.length,
-                    maxConcurrent: this.maxConcurrent
-                };
-            }
-        };
-    }
+    // The queue is now initialized in constructor using SmartQueue
     
     setupRoutes() {
         // Webhook verification
@@ -428,11 +271,21 @@ class BaseChatbotService {
         
         // Test endpoint
         this.app.get('/test', (req, res) => {
-            res.json({ 
-                status: `${this.serviceName} is working!`, 
+            res.json({
+                status: `${this.serviceName} is working!`,
                 timestamp: new Date().toISOString(),
                 aiProvider: this.aiProvider
             });
+        });
+
+        // Health monitoring endpoint
+        this.app.get('/health-monitoring', (req, res) => {
+            res.json(healthMonitor.getHealthStatus());
+        });
+
+        // Performance metrics endpoint
+        this.app.get('/metrics', (req, res) => {
+            res.json(healthMonitor.getPerformanceMetrics());
         });
     }
     
@@ -442,31 +295,47 @@ class BaseChatbotService {
             await this.processingRequests.get(sender_psid);
         }
 
-        const requestHandler = async () => {
-            let processingPromise;
-            if (webhook_event.message && webhook_event.message.text) {
-                processingPromise = this.processMessage(sender_psid, webhook_event.message, requestKey);
-            } else if (webhook_event.message && webhook_event.message.attachments) {
-                processingPromise = this.processAttachment(sender_psid, webhook_event.message, requestKey);
-            } else {
-                await this.callSendAPI(sender_psid, { text: "Xin lỗi, tôi chỉ hỗ trợ văn bản, hình ảnh, âm thanh. 😊" });
-                return;
-            }
-            
-            this.processingRequests.set(sender_psid, processingPromise);
-            try { 
-                await processingPromise; 
-            } finally { 
-                this.processingRequests.delete(sender_psid); 
+        const requestContext = {
+            sender_psid,
+            message_type: webhook_event.message ?
+                (webhook_event.message.text ? 'text' : 'attachment') : 'unknown',
+            is_first_time_user: !this.userSessions.has(sender_psid)
+        };
+
+        const requestHandler = {
+            handler: async () => {
+                let processingPromise;
+                if (webhook_event.message && webhook_event.message.text) {
+                    processingPromise = this.processMessage(sender_psid, webhook_event.message, requestKey);
+                } else if (webhook_event.message && webhook_event.message.attachments) {
+                    processingPromise = this.processAttachment(sender_psid, webhook_event.message, requestKey);
+                } else {
+                    await this.callSendAPI(sender_psid, { text: "Xin lỗi, tôi chỉ hỗ trợ văn bản, hình ảnh, âm thanh. 😊" });
+                    return;
+                }
+
+                this.processingRequests.set(sender_psid, processingPromise);
+                try {
+                    await processingPromise;
+                } finally {
+                    this.processingRequests.delete(sender_psid);
+                }
             }
         };
 
         try {
-            await this.requestQueue.addRequest(requestKey, requestHandler, sender_psid);
+            // Use the new smart queue with context
+            await this.requestQueue.addRequest(requestHandler, sender_psid, requestContext);
+
+            // Process available requests
+            setTimeout(async () => {
+                await this.requestQueue.processAvailable();
+            }, 100);
+
         } catch (error) {
             console.error(`❌ Queue error for ${sender_psid}:`, error);
-            await this.callSendAPI(sender_psid, { 
-                text: "Xin lỗi, hệ thống đang quá tải. Vui lòng thử lại sau ít phút! 🙏" 
+            await this.callSendAPI(sender_psid, {
+                text: "Xin lỗi, hệ thống đang quá tải. Vui lòng thử lại sau ít phút! 🙏"
             });
         }
     }
@@ -501,88 +370,122 @@ class BaseChatbotService {
     }
     
     async processNormalMessage(sender_psid, userMessage) {
-        // Generate or use existing session ID
-        const sessionId = this.getSessionId(sender_psid);
-
-        // Get relevant knowledge from RAG system
-        const detectedContext = this.detectContext(userMessage);
-        const relevantKnowledge = await this.ragSystem.getRelevantKnowledge(userMessage, detectedContext);
-        const knowledgeContext = this.ragSystem.formatKnowledgeForPrompt(relevantKnowledge, userMessage);
-
-        // Get conversation history from both old and new systems
-        const oldHistory = await this.getConversationHistory(sender_psid);
-        if (oldHistory.length > 0 && oldHistory[0].role === 'model') {
-            oldHistory.shift();
-        }
-
-        // Get recent chat history for better context
-        const recentChatHistory = await this.chatHistoryManager.getConversationHistory(sender_psid, sessionId, 10);
-        const recentMessages = recentChatHistory.success ?
-            recentChatHistory.data.map(msg => msg.message_content).join(' ') :
-            oldHistory.slice(-5).map(msg => msg.parts[0].text).join(' ');
-
-        // Enhanced system prompt with context awareness - prioritize knowledge base
-        let contextType = null;
-
-        if (userMessage.toLowerCase().includes('quên mật khẩu') ||
-            userMessage.toLowerCase().includes('lỗi đăng nhập') ||
-            userMessage.toLowerCase().includes('không truy cập') ||
-            userMessage.toLowerCase().includes('bị khóa') ||
-            userMessage.toLowerCase().includes('không nhớ')) {
-            if (recentMessages.includes('VNeID')) {
-                contextType = 'VNeID';
-            } else if (recentMessages.includes('ETAX') || recentMessages.includes('thuế')) {
-                contextType = 'ETAX';
-            } else if (recentMessages.includes('VssID') || recentMessages.includes('bảo hiểm')) {
-                contextType = 'VssID';
-            } else if (recentMessages.includes('Cổng Dịch vụ') || recentMessages.includes('dịch vụ công')) {
-                contextType = 'PUBLIC_SERVICE';
-            }
-        }
-
-        // If we have relevant knowledge, create a focused system prompt
-        let enhancedSystemPrompt;
-        if (knowledgeContext.trim()) {
-            // Create a focused prompt that prioritizes knowledge base information
-            enhancedSystemPrompt = `Bạn là một trợ lý thông minh hỗ trợ người dân trong các thủ tục hành chính Việt Nam.\n\n`;
-            enhancedSystemPrompt += `NHIỆM VỤ CHÍNH:\n`;
-            enhancedSystemPrompt += `- Trả lời CHÍNH XÁC dựa trên thông tin từ CƠ SỞ TRI THỨC CHÍNH THỨC dưới đây\n`;
-            enhancedSystemPrompt += `- Ưu tiên sử dụng các THÔNG TIN CỤ THỂ: mã thủ tục, thời gian, phí, cơ quan thực hiện, thành phần hồ sơ, trình tự thực hiện\n`;
-            enhancedSystemPrompt += `- Trả lời NGẮN GỌN, RÕ RÀNG và CÓ TRỌNG TÂM\n`;
-            enhancedSystemPrompt += `- Cung cấp LINK CHI TIẾT nếu có sẵn trong nguồn\n`;
-            enhancedSystemPrompt += `- Tránh nội dung chung chung, không liên quan\n\n`;
-            enhancedSystemPrompt += `CƠ SỞ TRI THỨC CHÍNH THỨC:\n${knowledgeContext}\n\n`;
-            enhancedSystemPrompt += `HƯỚNG DẪN TRẢ LỜI:\n`;
-            enhancedSystemPrompt += `- Bắt đầu bằng việc nêu rõ mã thủ tục và tên thủ tục nếu có\n`;
-            enhancedSystemPrompt += `- Liệt kê các bước thực hiện cụ thể nếu người dùng hỏi về quy trình\n`;
-            enhancedSystemPrompt += `- Nêu rõ phí, lệ phí và thời gian giải quyết\n`;
-            enhancedSystemPrompt += `- Cung cấp thông tin liên hệ hoặc link chi tiết nếu có\n`;
-            enhancedSystemPrompt += `- Nếu không có thông tin liên quan, hãy từ chối lịch sự và hướng người dùng đến nguồn chính thức`;
-        } else {
-            // Use default system prompt when no knowledge base is available
-            enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
-        }
-
-        // Combine old and new history for AI context
-        const combinedHistory = [
-            ...oldHistory.map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'assistant',
-                content: msg.parts[0].text
-            })),
-            ...(recentChatHistory.success ?
-                recentChatHistory.data.map(msg => ({
-                    role: msg.message_type === 'user' ? 'user' : 'assistant',
-                    content: msg.message_content
-                })).slice(-10) : []) // Use only last 10 messages from new history
-        ];
-
-        const messages = [
-            { role: "system", content: enhancedSystemPrompt },
-            ...combinedHistory,
-            { role: "user", content: userMessage }
-        ];
-
         try {
+            // Try to get from cache first
+            const cacheKey = `response_${sender_psid}_${encodeURIComponent(userMessage.substring(0, 50))}`;
+            let cachedResult = aiResponseCache.getCachedResponse(
+                { userMessage, sender_psid },
+                { context: this.detectContext(userMessage) },
+                this.aiProvider
+            );
+
+            if (cachedResult) {
+                this.logger.info(`Cache hit for user ${sender_psid}`, { cacheKey });
+                // Send cached response
+                await this.sendResponse(sender_psid, userMessage, cachedResult, this.detectContext(userMessage));
+                return;
+            }
+
+            // Generate or use existing session ID
+            const sessionId = this.getSessionId(sender_psid);
+
+            // Get relevant knowledge from RAG system (with caching)
+            const detectedContext = this.detectContext(userMessage);
+            let relevantKnowledge = conversationCache.getCachedKnowledge(userMessage);
+
+            if (!relevantKnowledge) {
+                relevantKnowledge = await this.ragSystem.getRelevantKnowledge(userMessage, detectedContext);
+                conversationCache.cacheKnowledge(userMessage, relevantKnowledge);
+
+                // Log RAG quality metrics
+                const qualityValidation = this.ragSystem.validateKnowledgeQuality(relevantKnowledge, userMessage);
+                this.logger.info(`RAG Quality for query "${userMessage.substring(0, 50)}...":`, {
+                    qualityScore: qualityValidation.score,
+                    validDocs: qualityValidation.metrics.validContentCount,
+                    totalDocs: qualityValidation.metrics.totalDocs,
+                    avgSimilarity: qualityValidation.metrics.avgSimilarity
+                });
+            }
+
+            const knowledgeContext = this.ragSystem.formatKnowledgeForPrompt(relevantKnowledge, userMessage);
+
+            // Get conversation history from both old and new systems (with caching)
+            let oldHistory = conversationCache.getCachedConversation(sender_psid);
+            if (!oldHistory) {
+                oldHistory = await this.getConversationHistory(sender_psid);
+                if (oldHistory.length > 0 && oldHistory[0].role === 'model') {
+                    oldHistory.shift();
+                }
+                conversationCache.cacheConversation(sender_psid, oldHistory);
+            }
+
+            // Get recent chat history for better context
+            const recentChatHistory = await this.chatHistoryManager.getConversationHistory(sender_psid, sessionId, 10);
+            const recentMessages = recentChatHistory.success ?
+                recentChatHistory.data.map(msg => msg.message_content).join(' ') :
+                oldHistory.slice(-5).map(msg => msg.parts[0].text).join(' ');
+
+            // Enhanced system prompt with context awareness - prioritize knowledge base
+            let contextType = null;
+
+            if (userMessage.toLowerCase().includes('quên mật khẩu') ||
+                userMessage.toLowerCase().includes('lỗi đăng nhập') ||
+                userMessage.toLowerCase().includes('không truy cập') ||
+                userMessage.toLowerCase().includes('bị khóa') ||
+                userMessage.toLowerCase().includes('không nhớ')) {
+                if (recentMessages.includes('VNeID')) {
+                    contextType = 'VNeID';
+                } else if (recentMessages.includes('ETAX') || recentMessages.includes('thuế')) {
+                    contextType = 'ETAX';
+                } else if (recentMessages.includes('VssID') || recentMessages.includes('bảo hiểm')) {
+                    contextType = 'VssID';
+                } else if (recentMessages.includes('Cổng Dịch vụ') || recentMessages.includes('dịch vụ công')) {
+                    contextType = 'PUBLIC_SERVICE';
+                }
+            }
+
+            // If we have relevant knowledge, create a focused system prompt
+            let enhancedSystemPrompt;
+            if (knowledgeContext.trim()) {
+                // Create a focused prompt that prioritizes knowledge base information
+                enhancedSystemPrompt = `Bạn là một trợ lý thông minh hỗ trợ người dân trong các thủ tục hành chính Việt Nam.\n\n`;
+                enhancedSystemPrompt += `NHIỆM VỤ CHÍNH:\n`;
+                enhancedSystemPrompt += `- Trả lời CHÍNH XÁC dựa trên thông tin từ CƠ SỞ TRI THỨC CHÍNH THỨC dưới đây\n`;
+                enhancedSystemPrompt += `- Ưu tiên sử dụng các THÔNG TIN CỤ THỂ: mã thủ tục, thời gian, phí, cơ quan thực hiện, thành phần hồ sơ, trình tự thực hiện\n`;
+                enhancedSystemPrompt += `- Trả lời NGẮN GỌN, RÕ RÀNG và CÓ TRỌNG TÂM\n`;
+                enhancedSystemPrompt += `- Cung cấp LINK CHI TIẾT nếu có sẵn trong nguồn\n`;
+                enhancedSystemPrompt += `- Tránh nội dung chung chung, không liên quan\n\n`;
+                enhancedSystemPrompt += `CƠ SỞ TRI THỨC CHÍNH THỨC:\n${knowledgeContext}\n\n`;
+                enhancedSystemPrompt += `HƯỚNG DẪN TRẢ LỜI:\n`;
+                enhancedSystemPrompt += `- Bắt đầu bằng việc nêu rõ mã thủ tục và tên thủ tục nếu có\n`;
+                enhancedSystemPrompt += `- Liệt kê các bước thực hiện cụ thể nếu người dùng hỏi về quy trình\n`;
+                enhancedSystemPrompt += `- Nêu rõ phí, lệ phí và thời gian giải quyết\n`;
+                enhancedSystemPrompt += `- Cung cấp thông tin liên hệ hoặc link chi tiết nếu có\n`;
+                enhancedSystemPrompt += `- Nếu không có thông tin liên quan, hãy từ chối lịch sự và hướng người dùng đến nguồn chính thức`;
+            } else {
+                // Use default system prompt when no knowledge base is available
+                enhancedSystemPrompt = getEnhancedPrompt(SYSTEM_PROMPT, contextType);
+            }
+
+            // Combine old and new history for AI context
+            const combinedHistory = [
+                ...oldHistory.map(msg => ({
+                    role: msg.role === 'user' ? 'user' : 'assistant',
+                    content: msg.parts[0].text
+                })),
+                ...(recentChatHistory.success ?
+                    recentChatHistory.data.map(msg => ({
+                        role: msg.message_type === 'user' ? 'user' : 'assistant',
+                        content: msg.message_content
+                    })).slice(-10) : []) // Use only last 10 messages from new history
+            ];
+
+            const messages = [
+                { role: "system", content: enhancedSystemPrompt },
+                ...combinedHistory,
+                { role: "user", content: userMessage }
+            ];
+
             // Track start time for response time measurement
             const startTime = Date.now();
 
@@ -591,10 +494,54 @@ class BaseChatbotService {
                 text = getErrorMessage('SYSTEM_ERROR');
             }
 
+            // First, try to get from improved cache to avoid calling AI if possible
+            const cacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, detectedContext);
+            let cachedResult = await improvedCache.get(cacheKey);
+
+            if (!cachedResult) {
+                // Validate response against knowledge base for accuracy using the new RAG validation
+                const ragSystem = this.ragSystem; // Use the existing RAG system instance
+                if (ragSystem && relevantKnowledge && relevantKnowledge.length > 0) {
+                    // Check for potential hallucinations
+                    const hallucinationCheck = ragSystem.isResponseHallucinated(text, userMessage, relevantKnowledge);
+                    if (hallucinationCheck.isHallucinated) {
+                        console.log(`⚠️ Potential hallucination detected: ${hallucinationCheck.flaggedContent.join(', ')}`);
+                        // For now, we'll continue with the original response but in the future we might want to handle this differently
+                    }
+
+                    // Validate response faithfulness
+                    const validation = ragSystem.validateResponseAgainstDocuments(text, relevantKnowledge);
+                    if (!validation.isValid && validation.confidence < 0.5) {
+                        console.log(`⚠️ Low confidence response (${validation.confidence.toFixed(2)}): ${validation.message}`);
+                        // Use validated response if available
+                        if (validation.validatedResponse !== text) {
+                            text = validation.validatedResponse;
+                        }
+                    }
+                }
+
+                // Cache the processed response
+                await improvedCache.cacheAIResponse(userMessage, sender_psid, text, this.aiProvider, detectedContext);
+            } else {
+                text = cachedResult.response;
+                console.log(`✅ Used cached AI response for: ${cacheKey}`);
+            }
+
             // Post-process the response to remove irrelevant content
             text = this.postProcessResponse(text, userMessage);
 
+            // Cache the response for future use
+            aiResponseCache.setCachedResponse(
+                { userMessage, sender_psid },
+                text,
+                { context: detectedContext },
+                this.aiProvider
+            );
+
             const responseTime = Date.now() - startTime;
+
+            // Update health monitoring metrics
+            healthMonitor.updateMetrics('ai_request', responseTime, true);
 
             // MACHINE LEARNING: Continuous learning - track user interactions
             await this.continuousLearningTracking(sender_psid, userMessage, text, detectedContext);
@@ -606,76 +553,96 @@ class BaseChatbotService {
                 // Continue normal processing but log for review
             }
 
-            if (text.includes('STEP')) {
-                const userSession = this.userSessions.get(sender_psid) || {};
-                userSession.currentJourney = { title: userMessage, fullGuide: text };
-                this.userSessions.set(sender_psid, userSession);
-
-                await this.callSendAPI(sender_psid, { text: `Xin chào! 👋\n${text}\nBạn có muốn mình hướng dẫn từng bước một không?` });
-                await this.callSendAPI(sender_psid, {
-                    text: "Vui lòng trả lời 'Có' nếu bạn muốn được hướng dẫn từng bước, hoặc 'Không' nếu bạn chỉ muốn xem hướng dẫn tổng quát."
-                });
-
-                // Save to both history systems - use the saveConversation method which now handles Supabase
-                await this.saveConversation(sender_psid, userMessage, text);
-                // The ChatHistoryManager will handle its own storage
-                await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
-                await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
-                    intent: detectedContext,
-                    journey_step: true
-                });
-            } else {
-                if (text.length > 2000) {
-                    const chunks = this.splitMessage(text, 2000);
-                    for (let i = 0; i < chunks.length; i++) {
-                        const isLast = i === chunks.length - 1;
-                        const res = { text: chunks[i] };
-                        if (isLast) {
-                            const ext = this.extractSuggestions(text);
-                            // Add FAQ suggestions based on user behavior and context
-                            const faqSuggestions = await this.generateFAQSuggestions(sender_psid, userMessage, detectedContext);
-                            const allSuggestions = [...ext.suggestions, ...faqSuggestions];
-                            await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, allSuggestions);
-                        } else {
-                            await this.callSendAPI(sender_psid, res);
-                        }
-                        if (!isLast) await new Promise(r => setTimeout(r, 500));
-                    }
-                } else {
-                    const ext = this.extractSuggestions(text);
-                    // Add FAQ suggestions based on user behavior and context
-                    const faqSuggestions = await this.generateFAQSuggestions(sender_psid, userMessage, detectedContext);
-                    const allSuggestions = [...ext.suggestions, ...faqSuggestions];
-                    await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, allSuggestions);
-                }
-
-                // Save to both history systems - use the saveConversation method which now handles Supabase
-                await this.saveConversation(sender_psid, userMessage, text);
-                // The ChatHistoryManager will handle its own storage
-                await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
-                await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
-                    intent: detectedContext
-                });
-            }
+            // Send the response
+            await this.sendResponse(sender_psid, userMessage, text, detectedContext, responseTime);
 
             this.dailyQuotaUsed++;
             console.log(`✅ Successfully processed message for ${sender_psid}`);
+
         } catch (error) {
-            console.error(`❌ ERROR in processNormalMessage for ${sender_psid}:`, error);
+            this.logger.error(`ERROR in processNormalMessage for ${sender_psid}:`, {
+                error: error.message,
+                stack: error.stack,
+                userMessage
+            });
+
+            // Update health monitoring metrics for failed request
+            healthMonitor.updateMetrics('ai_request', null, false);
+
+            // Use the new error handler
             const errorResponse = {
-                "text": getErrorMessage('SYSTEM_ERROR')
+                "text": ErrorHandler.handle(error, { sender_psid, userMessage }, this.logger)
             };
+
             await this.callSendAPI(sender_psid, errorResponse);
 
             // Save error to history
-            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
+            const sessionId = this.getSessionId(sender_psid);
+            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, this.detectContext(userMessage));
             await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, errorResponse.text, null, {
-                intent: detectedContext,
+                intent: this.detectContext(userMessage),
                 error: true
             });
         }
     }
-    
+
+    // New helper method to send responses
+    async sendResponse(sender_psid, userMessage, text, detectedContext, responseTime = null) {
+        const sessionId = this.getSessionId(sender_psid);
+
+        if (text.includes('STEP')) {
+            const userSession = this.userSessions.get(sender_psid) || {};
+            userSession.currentJourney = { title: userMessage, fullGuide: text };
+            this.userSessions.set(sender_psid, userSession);
+
+            await this.callSendAPI(sender_psid, { text: `Xin chào! 👋\n${text}\nBạn có muốn mình hướng dẫn từng bước một không?` });
+            await this.callSendAPI(sender_psid, {
+                text: "Vui lòng trả lời 'Có' nếu bạn muốn được hướng dẫn từng bước, hoặc 'Không' nếu bạn chỉ muốn xem hướng dẫn tổng quát."
+            });
+
+            // Save to both history systems - use the saveConversation method which now handles Supabase
+            await this.saveConversation(sender_psid, userMessage, text);
+            // The ChatHistoryManager will handle its own storage
+            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
+            await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
+                intent: detectedContext,
+                journey_step: true
+            });
+        } else {
+            if (text.length > 2000) {
+                const chunks = this.splitMessage(text, 2000);
+                for (let i = 0; i < chunks.length; i++) {
+                    const isLast = i === chunks.length - 1;
+                    const res = { text: chunks[i] };
+                    if (isLast) {
+                        const ext = this.extractSuggestions(text);
+                        // Add FAQ suggestions based on user behavior and context
+                        const faqSuggestions = await this.generateFAQSuggestions(sender_psid, userMessage, detectedContext);
+                        const allSuggestions = [...ext.suggestions, ...faqSuggestions];
+                        await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, allSuggestions);
+                    } else {
+                        await this.callSendAPI(sender_psid, res);
+                    }
+                    if (!isLast) await new Promise(r => setTimeout(r, 500));
+                }
+            } else {
+                const ext = this.extractSuggestions(text);
+                // Add FAQ suggestions based on user behavior and context
+                const faqSuggestions = await this.generateFAQSuggestions(sender_psid, userMessage, detectedContext);
+                const allSuggestions = [...ext.suggestions, ...faqSuggestions];
+                await this.callSendAPIWithRating(sender_psid, { text: ext.cleanedText }, allSuggestions);
+            }
+
+            // Save to both history systems - use the saveConversation method which now handles Supabase
+            await this.saveConversation(sender_psid, userMessage, text);
+            // The ChatHistoryManager will handle its own storage
+            await this.chatHistoryManager.saveUserMessage(sender_psid, sessionId, userMessage, detectedContext);
+            await this.chatHistoryManager.saveAssistantResponse(sender_psid, sessionId, text, responseTime, {
+                intent: detectedContext
+            });
+        }
+    }
+
     async processAttachment(sender_psid, message, requestKey) {
         const attachment = message.attachments[0];
         if (attachment.type === 'image') {
@@ -714,6 +681,20 @@ class BaseChatbotService {
             let text = await this.callAI(messages, sender_psid);
             if (!text || text.trim() === '') {
                 text = getErrorMessage('IMAGE_ERROR');
+            }
+
+            // First, try to get from improved cache to avoid calling AI if possible
+            const userMessage = "Analyze this image: " + (IMAGE_ANALYSIS_PROMPT || "Image analysis request");
+            const cacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, 'image');
+            let cachedResult = await improvedCache.get(cacheKey);
+
+            if (!cachedResult) {
+                // For image processing, we might not have specific knowledge to validate against
+                // But we can still cache the result for future similar requests
+                await improvedCache.cacheAIResponse(userMessage, sender_psid, text, this.aiProvider, 'image');
+            } else {
+                text = cachedResult.response;
+                console.log(`✅ Used cached image analysis response for: ${cacheKey}`);
             }
 
             const responseTime = Date.now() - startTime;
@@ -807,6 +788,20 @@ class BaseChatbotService {
             let text = await this.callAI(messages, sender_psid);
             if (!text || text.trim() === '') {
                 text = getErrorMessage('SYSTEM_ERROR');
+            }
+
+            // First, try to get from improved cache to avoid calling AI if possible
+            const userMessage = transcript; // Use the transcribed audio as the message for caching
+            const cacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, 'audio');
+            let cachedResult = await improvedCache.get(cacheKey);
+
+            if (!cachedResult) {
+                // For audio processing, we might not have specific knowledge to validate against
+                // But we can still cache the result for future similar requests
+                await improvedCache.cacheAIResponse(userMessage, sender_psid, text, this.aiProvider, 'audio');
+            } else {
+                text = cachedResult.response;
+                console.log(`✅ Used cached audio response for: ${cacheKey}`);
             }
 
             const responseTime = Date.now() - startTime;
@@ -941,11 +936,7 @@ class BaseChatbotService {
             // Use Supabase for conversation history if available, otherwise fallback to old method
             if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
                 // Initialize Supabase client for history operations
-                const { createClient } = require('@supabase/supabase-js');
-                const supabase = createClient(
-                    process.env.SUPABASE_URL,
-                    process.env.SUPABASE_KEY
-                );
+                const supabase = this.dbManager.getSupabaseClient();
 
                 // First, ensure the user exists in the users table
                 const { data: existingUser } = await supabase
@@ -1053,20 +1044,18 @@ class BaseChatbotService {
                     parts: [{ text: conv.message_content }]
                 }));
             } else {
-                // Fallback to correct table if Supabase not configured
-                const query = {
-                    text: `
-                        SELECT user_request as message, 'user' as role, created_at FROM user_chat_history WHERE facebook_user_id = $1 AND user_request IS NOT NULL
-                        UNION ALL
-                        SELECT chatbot_response as message, 'assistant' as role, created_at FROM user_chat_history WHERE facebook_user_id = $1 AND chatbot_response IS NOT NULL
-                        ORDER BY created_at DESC
-                        LIMIT 20
-                    `,
-                    values: [userId],
-                };
+                // Fallback to correct table if Supabase not configured - use database manager
+                const query = `
+                    SELECT user_request as message, 'user' as role, created_at FROM user_chat_history WHERE facebook_user_id = $1 AND user_request IS NOT NULL
+                    UNION ALL
+                    SELECT chatbot_response as message, 'assistant' as role, created_at FROM user_chat_history WHERE facebook_user_id = $1 AND chatbot_response IS NOT NULL
+                    ORDER BY created_at DESC
+                    LIMIT 20
+                `;
+
                 try {
-                    const { rows } = await this.pool.query(query);
-                    return rows.reverse().map(row => ({ role: row.role, parts: [{ text: row.message }] }));
+                    const result = await this.dbManager.executeQuery(query, [userId], true); // Use caching
+                    return result.rows.reverse().map(row => ({ role: row.role, parts: [{ text: row.message }] }));
                 } catch (error) {
                     console.error('Error fetching history:', error);
                     return [];
@@ -1091,16 +1080,26 @@ class BaseChatbotService {
                 // Save conversation to user_chat_history table
                 await chatHistoryService.saveConversation(userId, userMessage, botResponse, sessionId);
             } else {
-                // Fallback to correct table if Supabase not configured
-                await this.pool.query('INSERT INTO user_chat_history (facebook_user_id, user_request, chatbot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
+                // Fallback to correct table if Supabase not configured - use database manager
+                const query = 'INSERT INTO user_chat_history (facebook_user_id, user_request, chatbot_response) VALUES ($1, $2, $3)';
+                await this.dbManager.executeQuery(query, [userId, userMessage, botResponse]);
             }
         } catch (error) {
-            console.error('Error saving conversation:', error);
+            this.logger.error('Error saving conversation:', {
+                error: error.message,
+                userId,
+                userMessage: userMessage.substring(0, 50) + '...'
+            });
+
             // Fallback to correct table if Supabase fails
             try {
-                await this.pool.query('INSERT INTO user_chat_history (facebook_user_id, user_request, chatbot_response) VALUES ($1, $2, $3)', [userId, userMessage, botResponse]);
-            } catch (oldError) {
-                console.error('Error saving to fallback db:', oldError);
+                const query = 'INSERT INTO user_chat_history (facebook_user_id, user_request, chatbot_response) VALUES ($1, $2, $3)';
+                await this.dbManager.executeQuery(query, [userId, userMessage, botResponse]);
+            } catch (dbError) {
+                this.logger.error('Error saving to fallback db:', {
+                    error: dbError.message,
+                    userId
+                });
             }
         }
     }
@@ -1281,7 +1280,9 @@ class BaseChatbotService {
     setupGracefulShutdown() {
         process.on('SIGTERM', async () => {
             console.log(`${this.serviceName}: Shutting down...`);
-            await this.pool.end();
+            if (this.dbManager) {
+                await this.dbManager.closeAllConnections();
+            }
             process.exit(0);
         });
     }
@@ -1647,11 +1648,6 @@ class BaseChatbotService {
 
     // Cleanup method
     cleanup() {
-        if (this.geminiCheckInterval) {
-            clearInterval(this.geminiCheckInterval);
-            console.log('🧹 Cleaned up Gemini check interval');
-        }
-
         // Stop the knowledge watcher if it exists
         if (this.knowledgeRAGWatcher) {
             try {

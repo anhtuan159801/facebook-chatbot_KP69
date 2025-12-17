@@ -495,8 +495,8 @@ class BaseChatbotService {
             }
 
             // First, try to get from improved cache to avoid calling AI if possible
-            const cacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, detectedContext);
-            let cachedResult = await improvedCache.get(cacheKey);
+            const aiCacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, detectedContext);
+            let cachedResult = await improvedCache.get(aiCacheKey);
 
             if (!cachedResult) {
                 // Validate response against knowledge base for accuracy using the new RAG validation
@@ -524,7 +524,7 @@ class BaseChatbotService {
                 await improvedCache.cacheAIResponse(userMessage, sender_psid, text, this.aiProvider, detectedContext);
             } else {
                 text = cachedResult.response;
-                console.log(`✅ Used cached AI response for: ${cacheKey}`);
+                console.log(`✅ Used cached AI response for: ${aiCacheKey}`);
             }
 
             // Post-process the response to remove irrelevant content
@@ -684,17 +684,17 @@ class BaseChatbotService {
             }
 
             // First, try to get from improved cache to avoid calling AI if possible
-            const userMessage = "Analyze this image: " + (IMAGE_ANALYSIS_PROMPT || "Image analysis request");
-            const cacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, 'image');
-            let cachedResult = await improvedCache.get(cacheKey);
+            const imageUserMessage = "Analyze this image: " + (IMAGE_ANALYSIS_PROMPT || "Image analysis request");
+            const imageCacheKey = improvedCache.generateAIResponseCacheKey(imageUserMessage, sender_psid, this.aiProvider, 'image');
+            let cachedResult = await improvedCache.get(imageCacheKey);
 
             if (!cachedResult) {
                 // For image processing, we might not have specific knowledge to validate against
                 // But we can still cache the result for future similar requests
-                await improvedCache.cacheAIResponse(userMessage, sender_psid, text, this.aiProvider, 'image');
+                await improvedCache.cacheAIResponse(imageUserMessage, sender_psid, text, this.aiProvider, 'image');
             } else {
                 text = cachedResult.response;
-                console.log(`✅ Used cached image analysis response for: ${cacheKey}`);
+                console.log(`✅ Used cached image analysis response for: ${imageCacheKey}`);
             }
 
             const responseTime = Date.now() - startTime;
@@ -791,17 +791,17 @@ class BaseChatbotService {
             }
 
             // First, try to get from improved cache to avoid calling AI if possible
-            const userMessage = transcript; // Use the transcribed audio as the message for caching
-            const cacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, 'audio');
-            let cachedResult = await improvedCache.get(cacheKey);
+            const audioUserMessage = transcript; // Use the transcribed audio as the message for caching
+            const audioCacheKey = improvedCache.generateAIResponseCacheKey(audioUserMessage, sender_psid, this.aiProvider, 'audio');
+            let cachedResult = await improvedCache.get(audioCacheKey);
 
             if (!cachedResult) {
                 // For audio processing, we might not have specific knowledge to validate against
                 // But we can still cache the result for future similar requests
-                await improvedCache.cacheAIResponse(userMessage, sender_psid, text, this.aiProvider, 'audio');
+                await improvedCache.cacheAIResponse(audioUserMessage, sender_psid, text, this.aiProvider, 'audio');
             } else {
                 text = cachedResult.response;
-                console.log(`✅ Used cached audio response for: ${cacheKey}`);
+                console.log(`✅ Used cached audio response for: ${audioCacheKey}`);
             }
 
             const responseTime = Date.now() - startTime;

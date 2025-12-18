@@ -540,9 +540,11 @@ class EnhancedRAGSystem {
       ? totalSimilarity / knowledgeDocs.length
       : 0;
 
+    // Initialize queryWords outside the conditional block
+    const queryWords = userQuery ? userQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2) : [];
+
     // Check if documents contain relevant keywords from the query
     if (userQuery) {
-      const queryWords = userQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
       for (const doc of knowledgeDocs) {
         if (doc && doc.full_content) {
           const contentLower = doc.full_content.toLowerCase();

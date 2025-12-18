@@ -498,10 +498,10 @@ class BaseChatbotService {
                 // Log RAG quality metrics
                 const qualityValidation = this.ragSystem.validateKnowledgeQuality(relevantKnowledge, userMessage);
                 this.logger.info(`RAG Quality for query "${userMessage.substring(0, 50)}...":`, {
-                    qualityScore: qualityValidation.score,
-                    validDocs: qualityValidation.metrics.validContentCount,
-                    totalDocs: qualityValidation.metrics.totalDocs,
-                    avgSimilarity: qualityValidation.metrics.avgSimilarity
+                    qualityScore: qualityValidation && qualityValidation.score ? qualityValidation.score : 'N/A',
+                    validDocs: qualityValidation && qualityValidation.metrics && qualityValidation.metrics.validContentCount ? qualityValidation.metrics.validContentCount : 'N/A',
+                    totalDocs: qualityValidation && qualityValidation.metrics && qualityValidation.metrics.totalDocs ? qualityValidation.metrics.totalDocs : 'N/A',
+                    avgSimilarity: qualityValidation && qualityValidation.metrics && qualityValidation.metrics.avgSimilarity ? qualityValidation.metrics.avgSimilarity : 'N/A'
                 });
             }
 

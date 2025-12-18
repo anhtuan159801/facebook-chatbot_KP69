@@ -415,13 +415,101 @@ class EnhancedRAGSystem {
     const validDocs = knowledgeDocs.filter(doc =>
       doc &&
       doc.full_content &&
-      doc.full_content.trim().length > 20 && // At least 20 characters of meaningful content
-      (doc.similarity === undefined || doc.similarity > 0.05) // If similarity exists, ensure it's above threshold
+      doc.full_content.trim().length > 10 && // At least 10 characters of meaningful content (more lenient)
+      (doc.similarity === undefined || doc.similarity > 0.02) // Lower similarity threshold to allow more documents
     );
 
+    // If no valid docs after filtering, try with even more lenient criteria
     if (validDocs.length === 0) {
-      this.logger.warn('No valid knowledge documents found after filtering');
-      return '';
+      const moreLenientValidDocs = knowledgeDocs.filter(doc =>
+        doc && doc.full_content && doc.full_content.trim().length > 5 // Very minimal content
+      );
+
+      if (moreLenientValidDocs.length > 0) {
+        // Use the more lenient set - continue with the same formatting logic
+        this.logger.info(`Using ${moreLenientValidDocs.length} documents with lenient filtering`);
+        const sortedDocs = [...moreLenientValidDocs].sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+
+        // Special handling for temporary residence cancellation
+        if (userQuery.toLowerCase().includes('xóa tạm trú') || userQuery.toLowerCase().includes('hủy đăng ký tạm trú')) {
+          return ProfessionalResponseFormatter.formatTemporaryResidenceCancellationResponse(sortedDocs);
+        }
+
+        // Use the professional formatter for administrative procedures
+        if (ProfessionalResponseFormatter.isAdministrativeProcedureQuery(userQuery)) {
+          return ProfessionalResponseFormatter.formatStructuredResponse(userQuery, sortedDocs);
+        }
+
+        // Format with relevance scoring
+        return sortedDocs.map((doc, index) => {
+          // Extract structured information from the document content
+          const structuredInfo = this.extractStructuredInfo(doc.full_content);
+          // Extract URLs from the document content
+          const urls = this.extractUrlsFromContent(doc.full_content);
+
+          let formatted = `🔍 THỦ TỤC HÀNH CHÍNH CHI TIẾT (Độ phù hợp: ${(doc.similarity || 0).toFixed(2)}):\n`;
+          formatted += `📝 Mã thủ tục: ${doc.procedure_code || structuredInfo.procedureCode || 'N/A'}\n`;
+          formatted += `📋 Tên thủ tục: ${doc.procedure_title || structuredInfo.procedureName || 'N/A'}\n`;
+          formatted += `🏢 Bộ/Ngành: ${doc.ministry_name || 'N/A'}\n`;
+
+          // Add processing time if available
+          if (structuredInfo.processingTime) {
+            formatted += `⏰ Thời hạn giải quyết: ${structuredInfo.processingTime}\n`;
+          }
+
+          // Add fee information if available
+          if (structuredInfo.fee) {
+            formatted += `💰 Phí, lệ phí: ${structuredInfo.fee}\n`;
+          }
+
+          // Add documents required if available
+          if (structuredInfo.documents) {
+            formatted += `📋 Thành phần hồ sơ: ${typeof structuredInfo.documents === 'string' ?
+              structuredInfo.documents.substring(0, 300) + '...' : 'N/A'}\n`;
+          }
+
+          // Add procedure steps if available
+          if (structuredInfo.procedureSteps) {
+            formatted += `📋 Trình tự thực hiện: ${typeof structuredInfo.procedureSteps === 'string' ?
+              structuredInfo.procedureSteps.substring(0, 400) + '...' : 'N/A'}\n`;
+          }
+
+          // Display form link if available
+          if (structuredInfo.formLink) {
+            formatted += `📄 Link biểu mẫu: ${structuredInfo.formLink}\n`;
+          }
+
+          // Display actual URLs found in the document content
+          if (urls.length > 0) {
+            // Show the main link that isn't already captured as form link
+            const mainLinks = urls.filter(url => !structuredInfo.formLink || !url.includes(structuredInfo.formLink));
+            if (mainLinks.length > 0) {
+              formatted += `🔗 Link chi tiết: ${mainLinks[0]}\n`; // Show the main link
+              if (mainLinks.length > 1) {
+                formatted += `🔗 Link liên quan: ${mainLinks.slice(1).join(', ')}\n`;
+              }
+            }
+          } else if (doc.source_url) {
+            // Use the source_url from the doc if available
+            formatted += `🌐 Thông tin chi tiết: ${doc.source_url}\n`;
+          }
+
+          // Include metadata form link if available
+          if (doc.metadata && doc.metadata.form_link) {
+            formatted += `📋 Form link: ${doc.metadata.form_link}\n`;
+          }
+
+          // Include a more comprehensive content snippet
+          const contentSnippet = doc.full_content ?
+            doc.full_content.substring(0, 800) + (doc.full_content.length > 800 ? '...' : '') : 'N/A';
+          formatted += `📄 Nội dung đầy đủ: ${contentSnippet}\n\n`;
+
+          return formatted;
+        }).join('');
+      } else {
+        this.logger.warn('No valid knowledge documents found after filtering');
+        return '';
+      }
     }
 
     // Sort docs by similarity if available (for better context relevance)

@@ -589,9 +589,32 @@ class BaseChatbotService {
             // Track start time for response time measurement
             const startTime = Date.now();
 
-            let text = await this.callAI(messages, sender_psid);
-            if (!text || text.trim() === '') {
-                text = getErrorMessage('SYSTEM_ERROR');
+            let text;
+            try {
+                text = await this.callAI(messages, sender_psid);
+                if (!text || text.trim() === '') {
+                    text = getErrorMessage('SYSTEM_ERROR');
+                }
+            } catch (aiError) {
+                console.error('❌ AI API Error:', aiError.message);
+                // If AI API fails, but we have relevant knowledge documents, provide them directly
+                if (relevantKnowledge && relevantKnowledge.length > 0) {
+                    console.log(`⚠️ AI API failed, but ${relevantKnowledge.length} documents found. Providing direct information...`);
+                    if (ProfessionalResponseFormatter.isAdministrativeProcedureQuery(userMessage)) {
+                        // Use the professional formatter for administrative procedures
+                        text = ProfessionalResponseFormatter.formatStructuredResponse(userMessage, relevantKnowledge);
+                    } else {
+                        // Use the RAG system's format method for other types of queries
+                        text = this.ragSystem.formatKnowledgeForPrompt(relevantKnowledge, userMessage);
+                    }
+
+                    // If the formatted response is still empty or minimal, provide fallback
+                    if (!text || text.trim().length < 50) {
+                        text = getErrorMessage('SYSTEM_ERROR');
+                    }
+                } else {
+                    text = getErrorMessage('SYSTEM_ERROR');
+                }
             }
 
             // Validate response against knowledge base for accuracy using the RAG validation

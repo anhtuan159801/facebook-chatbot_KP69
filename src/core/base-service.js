@@ -63,6 +63,8 @@ class BaseChatbotService {
         // Initialize Express app
         this.app = express();
         this.app.use(express.json());
+        // Serve static files from the public directory
+        this.app.use(express.static(path.join(__dirname, '..', '..', 'public')));
 
         // Use the new database manager (no need to initialize pool separately)
         this.dbManager = dbManager;
@@ -197,10 +199,11 @@ class BaseChatbotService {
                     if (adminToken === expectedToken) {
                         // Set the admin token in response header for the frontend to use
                         res.setHeader('X-Admin-Token-Valid', 'true');
-                        // Serve the admin dashboard
-                        res.sendFile(path.join(__dirname, '..', '..', 'public', 'admin.html'));
+                        // Serve the admin dashboard from public directory
+                        const adminHtmlPath = path.join(__dirname, '..', '..', 'public', 'admin.html');
+                        res.sendFile(adminHtmlPath);
                     } else {
-                        // If not authenticated, either redirect to login or show unauthorized
+                        // If not authenticated, show unauthorized access
                         res.status(401).json({ error: 'Unauthorized. Please provide valid admin token.' });
                     }
                 });

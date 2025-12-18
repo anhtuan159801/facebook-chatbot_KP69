@@ -47,6 +47,7 @@ const aiResponseCache = require('../utils/ai-response-cache');
 const improvedCache = require('../utils/improved-cache');
 const SmartQueue = require('../utils/smart-queue');
 const healthMonitor = require('../utils/system-health-monitor');
+const AdminAPI = require('../admin/admin-api');
 
 class BaseChatbotService {
     constructor(port, serviceName, aiProvider = 'gemini') {
@@ -85,6 +86,9 @@ class BaseChatbotService {
 
         // Initialize health monitoring
         this.initializeHealthMonitoring();
+
+        // Initialize admin API
+        this.initializeAdminAPI();
 
         // Initialize enhanced RAG system
         this.ragSystem = new EnhancedRAGSystem();
@@ -156,6 +160,38 @@ class BaseChatbotService {
             healthMonitor.startMonitoring();
             global.healthMonitorStarted = true;
             console.log('🏥 Service health monitoring initialized');
+        }
+    }
+
+    initializeAdminAPI() {
+        // Initialize admin API if admin features are enabled
+        if (process.env.ENABLE_ADMIN_INTERFACE === 'true') {
+            try {
+                const adminAPI = new AdminAPI();
+                this.app.use('/admin', adminAPI.getRouter());
+                console.log('🚀 Admin API initialized at /admin');
+
+                // Add a simple health check for the admin interface
+                this.app.get('/admin/health', (req, res) => {
+                    res.json({
+                        status: 'healthy',
+                        service: this.serviceName,
+                        timestamp: new Date().toISOString(),
+                        endpoints: [
+                            '/admin/stats/system',
+                            '/admin/stats/conversations',
+                            '/admin/models',
+                            '/admin/api-keys',
+                            '/admin/conversations'
+                        ]
+                    });
+                });
+            } catch (error) {
+                console.error('❌ Failed to initialize admin API:', error);
+                // Continue without admin interface if initialization fails
+            }
+        } else {
+            console.log('ℹ️ Admin interface is disabled (set ENABLE_ADMIN_INTERFACE=true to enable)');
         }
     }
 

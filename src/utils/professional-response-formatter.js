@@ -306,15 +306,27 @@ class ProfessionalResponseFormatter {
       return `Hiện tại tôi chưa có thông tin chính thức trong cơ sở tri thức về "${query}".`;
     }
 
+    // Filter documents based on quality and relevance
+    const validKnowledgeDocs = knowledgeDocs.filter(doc => {
+      return doc &&
+             doc.content &&
+             doc.content.trim().length > 50 &&  // Ensure substantial content
+             (doc.similarity === undefined || doc.similarity > 0.2); // Ensure minimum similarity threshold
+    });
+
+    if (validKnowledgeDocs.length === 0) {
+      return `Hiện tại tôi chưa có thông tin chính thức trong cơ sở tri thức về "${query}". Vui lòng tra cứu trên Cổng Dịch vụ công Quốc gia hoặc liên hệ trực tiếp với cơ quan có thẩm quyền.`;
+    }
+
     // Try to identify if this is an administrative procedure query
     const isAdminProcedure = this.isAdministrativeProcedureQuery(query);
-    
+
     if (isAdminProcedure) {
-      return this.formatKnowledgeForAdministrativeProcedure(knowledgeDocs);
+      return this.formatKnowledgeForAdministrativeProcedure(validKnowledgeDocs);
     }
 
     // For non-administrative queries, use general formatting
-    return knowledgeDocs.map(doc => {
+    return validKnowledgeDocs.map(doc => {
       return `📋 THÔNG TIN LIÊN QUAN:\n${doc.content.substring(0, 600)}...\n\n`;
     }).join('\n');
   }

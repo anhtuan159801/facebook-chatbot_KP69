@@ -71,8 +71,9 @@ class GeminiAI {
         } = options;
 
         try {
+            // Use a lower temperature for more consistent and factual responses
             const generationConfig = {
-                temperature,
+                temperature: this.config.temperature * 0.7, // Reduced temperature for more factual responses
                 topP,
                 topK,
                 maxOutputTokens: maxTokens
@@ -80,19 +81,34 @@ class GeminiAI {
 
             // Convert messages to Gemini format
             const geminiMessages = this.convertMessagesToGemini(messages);
-            
+
             const result = await this.model.generateContent({
                 contents: geminiMessages,
                 generationConfig
             });
 
             const response = await result.response;
-            return response.text();
+            const text = response.text();
+
+            // Post-process the response to ensure it follows the required format
+            return this.postProcessResponse(text);
 
         } catch (error) {
             console.error('❌ Gemini API Error:', error);
             throw new Error(`Gemini API failed: ${error.message}`);
         }
+    }
+
+    /**
+     * Post-process the AI response to ensure consistency and format
+     */
+    postProcessResponse(text) {
+        if (!text) return text;
+
+        // Clean up extra spaces and normalize formatting
+        return text
+            .replace(/\n\s*\n\s*\n/g, '\n\n')  // Remove excessive blank lines
+            .trim();
     }
 
     async generateTextWithImage(imagePrompt, imageData, options = {}) {
@@ -176,7 +192,7 @@ class OpenRouterAI {
 
         try {
             const fetch = (await import('node-fetch')).default;
-            
+
             const response = await fetch(`${this.config.baseURL}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -188,7 +204,7 @@ class OpenRouterAI {
                 body: JSON.stringify({
                     model: this.config.model,
                     messages: messages,
-                    temperature,
+                    temperature: temperature * 0.7, // Reduced temperature for more factual responses
                     top_p: topP,
                     max_tokens: maxTokens,
                     stream: false
@@ -202,9 +218,11 @@ class OpenRouterAI {
             }
 
             const data = await response.json();
-            
+
             if (data.choices && data.choices[0] && data.choices[0].message) {
-                return data.choices[0].message.content;
+                const content = data.choices[0].message.content;
+                // Post-process the response for consistency
+                return this.postProcessResponse(content);
             } else {
                 throw new Error('Invalid response format from OpenRouter API');
             }
@@ -213,6 +231,18 @@ class OpenRouterAI {
             console.error('❌ OpenRouter API Error:', error);
             throw new Error(`OpenRouter API failed: ${error.message}`);
         }
+    }
+
+    /**
+     * Post-process the AI response to ensure consistency and format
+     */
+    postProcessResponse(text) {
+        if (!text) return text;
+
+        // Clean up extra spaces and normalize formatting
+        return text
+            .replace(/\n\s*\n\s*\n/g, '\n\n')  // Remove excessive blank lines
+            .trim();
     }
 
     async transcribeAudio(audioBuffer, mimeType = 'audio/mp4') {
@@ -319,10 +349,10 @@ class HuggingFaceAI {
     async generateText(messages, options = {}) {
         try {
             const fetch = (await import('node-fetch')).default;
-            
+
             // Convert messages to single prompt
             const prompt = messages.map(msg => `${msg.role}: ${msg.content}`).join('\n');
-            
+
             const response = await fetch(`${this.config.baseURL}/microsoft/DialoGPT-medium`, {
                 method: 'POST',
                 headers: {
@@ -333,7 +363,7 @@ class HuggingFaceAI {
                     inputs: prompt,
                     parameters: {
                         max_length: 200,
-                        temperature: 0.7
+                        temperature: 0.5 // Lower temperature for more consistent responses
                     }
                 }),
                 timeout: this.config.timeout
@@ -345,9 +375,11 @@ class HuggingFaceAI {
             }
 
             const data = await response.json();
-            
+
             if (data.generated_text) {
-                return data.generated_text;
+                const content = data.generated_text;
+                // Post-process the response for consistency
+                return this.postProcessResponse(content);
             } else {
                 throw new Error('No text generated from Hugging Face API');
             }
@@ -356,6 +388,18 @@ class HuggingFaceAI {
             console.error('❌ Hugging Face Text API Error:', error);
             throw new Error(`Hugging Face Text API failed: ${error.message}`);
         }
+    }
+
+    /**
+     * Post-process the AI response to ensure consistency and format
+     */
+    postProcessResponse(text) {
+        if (!text) return text;
+
+        // Clean up extra spaces and normalize formatting
+        return text
+            .replace(/\n\s*\n\s*\n/g, '\n\n')  // Remove excessive blank lines
+            .trim();
     }
 }
 

@@ -6,6 +6,8 @@ let env = null;
 class LocalEmbeddings {
   constructor() {
     this.model = null;
+    // Use a more appropriate model for Vietnamese/multilingual text
+    this.modelName = process.env.EMBEDDING_MODEL || 'Xenova/all-MiniLM-L6-v2';
   }
 
   async loadTransformers() {
@@ -27,10 +29,17 @@ class LocalEmbeddings {
     await this.loadTransformers();
 
     if (!this.model) {
-      console.log('Loading embedding model...');
-      // Using a multilingual model suitable for Vietnamese text
-      this.model = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-      console.log('Embedding model loaded successfully');
+      console.log(`Loading embedding model: ${this.modelName}...`);
+      try {
+        // Using a multilingual model suitable for Vietnamese text
+        this.model = await pipeline('feature-extraction', this.modelName);
+        console.log('Embedding model loaded successfully');
+      } catch (error) {
+        console.error(`Failed to load ${this.modelName}, falling back to default:`, error.message);
+        // Fallback to the original model
+        this.model = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+        console.log('Default embedding model loaded successfully');
+      }
     }
     return this.model;
   }
@@ -47,7 +56,10 @@ class LocalEmbeddings {
         return new Array(384).fill(0);
       }
 
-      const embedding = await model(truncatedText, {
+      // Improved preprocessing for Vietnamese text to handle special characters
+      const processedText = this.preprocessText(truncatedText);
+
+      const embedding = await model(processedText, {
         pooling: 'mean',
         normalize: true
       });
@@ -66,6 +78,16 @@ class LocalEmbeddings {
       // Return a default embedding in case of error
       return new Array(384).fill(0);
     }
+  }
+
+  /**
+   * Preprocess text to improve embedding quality for Vietnamese
+   */
+  preprocessText(text) {
+    // Normalize Vietnamese characters and remove excessive whitespace
+    return text
+      .replace(/\s+/g, ' ')  // Normalize whitespace
+      .trim();
   }
 }
 

@@ -595,20 +595,27 @@ class BaseChatbotService {
             // Validate response against knowledge base for accuracy using the RAG validation
             const ragSystem = this.ragSystem; // Use the existing RAG system instance
             if (ragSystem && relevantKnowledge && relevantKnowledge.length > 0) {
-                // Check for potential hallucinations
+                // Check for potential hallucinations - more aggressive validation
                 const hallucinationCheck = ragSystem.isResponseHallucinated(text, userMessage, relevantKnowledge);
                 if (hallucinationCheck.isHallucinated) {
                     console.log(`⚠️ Potential hallucination detected: ${hallucinationCheck.flaggedContent.join(', ')}`);
-                    // For now, we'll continue with the original response
-                }
-
-                // Validate response faithfulness
-                const validation = ragSystem.validateResponseAgainstDocuments(text, relevantKnowledge);
-                if (!validation.isValid && validation.confidence < 0.5) {
-                    console.log(`⚠️ Low confidence response (${validation.confidence.toFixed(2)}): ${validation.message}`);
-                    // Use validated response if available
+                    // If highly likely to be hallucinated, try to get a better response using validated content
+                    const validation = ragSystem.validateResponseAgainstDocuments(text, relevantKnowledge);
                     if (validation.validatedResponse !== text) {
                         text = validation.validatedResponse;
+                    }
+                }
+
+                // Validate response faithfulness - more stringent validation
+                const validation = ragSystem.validateResponseAgainstDocuments(text, relevantKnowledge);
+                if (!validation.isValid || validation.confidence < 0.6) { // Raised threshold from 0.5 to 0.6
+                    console.log(`⚠️ Low confidence response (${validation.confidence.toFixed(2)}): ${validation.message}`);
+                    // Use validated response if available and it's more reliable
+                    if (validation.validatedResponse && validation.confidence > 0.3) {
+                        text = validation.validatedResponse;
+                    } else if (validation.confidence < 0.3) {
+                        // If confidence is very low, provide a more conservative response
+                        text = `Xin lỗi, tôi chưa tìm thấy thông tin chính xác trong cơ sở dữ liệu để trả lời câu hỏi "${userMessage}". Vui lòng tra cứu trên Cổng Dịch vụ công Quốc gia hoặc liên hệ cơ quan có thẩm quyền để được hỗ trợ chính xác nhất.`;
                     }
                 }
             }

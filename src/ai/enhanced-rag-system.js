@@ -1,6 +1,6 @@
 /**
  * Enhanced RAG System with Semantic Search
- * 
+ *
  * Implements proper semantic search using embeddings for better relevance
  * and accuracy in knowledge retrieval for the Vietnamese government services chatbot
  */
@@ -182,9 +182,10 @@ class EnhancedRAGSystem {
           procedure_title,
           ministry_name,
           source_url,
-          metadata
+          metadata,
+          embedding  -- Include embedding for more advanced vector operations if needed
         `)
-        .limit(limit * 2); // Get more results for better selection
+        .limit(limit * 3); // Get more results for better selection
 
       // Add category filter if provided
       if (category) {
@@ -202,26 +203,32 @@ class EnhancedRAGSystem {
       const similarityResults = [];
 
       for (const doc of allDocs) {
-        // Generate embedding for document content (or use pre-computed if available)
         try {
           // Use smaller chunk for faster embedding and better relevance
-          const docContent = doc.full_content.substring(0, 2000);
-          const docEmbedding = await this.generateEmbeddingWithCache(docContent);
-          const similarity = this.cosineSimilarity(queryEmbedding, docEmbedding);
+          const docContent = doc.full_content ? doc.full_content.substring(0, 2000) : '';
 
-          // Only include results with similarity above threshold
-          if (similarity > 0.05) { // Lowered threshold but will re-rank
+          // If the document has a precomputed embedding in the database, use it directly
+          let similarity = 0;
+          if (doc.embedding && Array.isArray(doc.embedding) && doc.embedding.length > 0) {
+            // Use the stored embedding from the database
+            similarity = this.cosineSimilarity(queryEmbedding, doc.embedding);
+          } else {
+            // Generate embedding on the fly if not available in database
+            const docEmbedding = await this.generateEmbeddingWithCache(docContent);
+            similarity = this.cosineSimilarity(queryEmbedding, docEmbedding);
+          }
+
+          // Raise the threshold for better relevance (was 0.05, now 0.15)
+          if (similarity > 0.15) {
             similarityResults.push({
               ...doc,
               similarity: similarity
             });
           }
         } catch (embeddingError) {
-          // If embedding generation fails for a document, use it with default similarity
-          similarityResults.push({
-            ...doc,
-            similarity: 0.3 // Lower default for failed embedding docs
-          });
+          // If embedding generation fails for a document, skip it to ensure quality
+          this.logger.warn(`Failed to process embedding for document ${doc.id}: ${embeddingError.message}`);
+          continue;
         }
       }
 
@@ -231,8 +238,16 @@ class EnhancedRAGSystem {
       // Re-rank using keyword matching as well for better relevance
       const rerankedResults = this.rerankResults(similarityResults);
 
-      // Return top results after re-ranking
-      return rerankedResults.slice(0, limit);
+      // Return top results after re-ranking, with quality validation
+      const finalResults = rerankedResults.slice(0, limit);
+
+      // Log quality metrics
+      if (finalResults.length > 0) {
+        const avgSimilarity = finalResults.reduce((sum, doc) => sum + (doc.similarity || 0), 0) / finalResults.length;
+        this.logger.info(`Vector search quality: ${finalResults.length} results, avg similarity: ${avgSimilarity.toFixed(3)}`);
+      }
+
+      return finalResults;
     } catch (error) {
       this.logger.warn(`Vector search error, falling back to text search: ${error.message}`);
       // In a real implementation with proper vector database, this would work
@@ -313,17 +328,17 @@ class EnhancedRAGSystem {
         const contentLower = doc.full_content.toLowerCase();
         const queryLower = userQuery.toLowerCase();
         const queryWords = queryLower.split(/\s+/);
-        
+
         let score = 0;
         for (const word of queryWords) {
           if (contentLower.includes(word)) {
             score += 1;
           }
         }
-        
+
         // Normalize the score
         const normalizedScore = Math.min(1.0, score / queryWords.length);
-        
+
         return {
           ...doc,
           similarity: normalizedScore
@@ -552,7 +567,7 @@ class EnhancedRAGSystem {
       /Mã:\s*([^\n\r]+)/i,
       /(?:Mã\s+)thủ\s+tục[:\s]+([^\n\r]+)/i
     ];
-    
+
     for (const pattern of codePatterns) {
       const match = content.match(pattern);
       if (match) {
@@ -568,7 +583,7 @@ class EnhancedRAGSystem {
       /Tên:\s*([^\n\r]+)/i,
       /(?:Tên\s+)thủ\s+tục[:\s]+([^\n\r]+)/i
     ];
-    
+
     for (const pattern of namePatterns) {
       const match = content.match(pattern);
       if (match) {
@@ -584,7 +599,7 @@ class EnhancedRAGSystem {
       /Thời gian xử lý:\s*([^\n\r]+)/i,
       /Thời hạn[:\s]+([^\n\r]+)/i
     ];
-    
+
     for (const pattern of timePatterns) {
       const match = content.match(pattern);
       if (match) {
@@ -600,7 +615,7 @@ class EnhancedRAGSystem {
       /Phí[:\s]+([^\n\r]+)/i,
       /(?:Phí|Lệ\s*phí)\s+([^\n\r]+)/i
     ];
-    
+
     for (const pattern of feePatterns) {
       const match = content.match(pattern);
       if (match) {
@@ -615,7 +630,7 @@ class EnhancedRAGSystem {
       /Cơ\s+quan\s+có\s+thẩm\s+quyền:\s*([^\n\r]+)/i,
       /Đơn\s+vị\s+giải\s+quyết:\s*([^\n\r]+)/i
     ];
-    
+
     for (const pattern of agencyPatterns) {
       const match = content.match(pattern);
       if (match) {
@@ -630,7 +645,7 @@ class EnhancedRAGSystem {
       /Hồ\s+sơ\s+bao\s+gồm:[\s\S]*?(?:\n\n|\nBước|\nCách|$)/i,
       /Giấy\s+tờ\s+cần\s+có:[\s\S]*?(?:\n\n|\nBước|\nCách|$)/i
     ];
-    
+
     for (const pattern of docsPatterns) {
       const match = content.match(pattern);
       if (match) {
@@ -645,7 +660,7 @@ class EnhancedRAGSystem {
       /Các\s+bước\s+thực\s+hiện:[\s\S]*?(?:\n\n|\nCách|$)/i,
       /Quy\s+trình\s+thực\s+hiện:[\s\S]*?(?:\n\n|\nCách|$)/i
     ];
-    
+
     for (const pattern of stepsPatterns) {
       const match = content.match(pattern);
       if (match) {
@@ -660,7 +675,7 @@ class EnhancedRAGSystem {
       /Mẫu\s+số.*?:\s*(https?:\/\/[^\s<>"'`]+)/i,
       /(https?:\/\/[^\s<>"'`]*\.(?:form|bieu-mau|mau|download))[^\s<>"'`]*/i
     ];
-    
+
     for (const pattern of formPatterns) {
       const match = content.match(pattern);
       if (match && match[1]) {
@@ -668,7 +683,7 @@ class EnhancedRAGSystem {
         break;
       }
     }
-    
+
     // Look for form links in URLs if pattern matching failed
     if (!info.formLink) {
       const urls = this.extractUrlsFromContent(content);
@@ -689,7 +704,7 @@ class EnhancedRAGSystem {
       /(?:Căn\s+cứ\s+pháp\s+lý|Theo\s+quy định|Theo\s+luật|Cơ\s+sở\s+pháp\s+lý)[\s\S]*?(?:\n\n|\n[^A-Z]|$)/i,
       /(?:Luật|Nghị\s+định|Thông\s+tư)[\s\S]*?(?:\n\n|\n[^A-Z]|$)/i
     ];
-    
+
     for (const pattern of legalBasisPatterns) {
       const match = content.match(pattern);
       if (match) {
@@ -925,19 +940,19 @@ class EnhancedRAGSystem {
     try {
       // Get results from both approaches
       const vectorResults = await this.performVectorSearch(
-        await this.generateEmbeddingWithCache(userQuery), 
-        category, 
+        await this.generateEmbeddingWithCache(userQuery),
+        category,
         Math.ceil(limit * 0.7) // 70% from vector search
       );
-      
+
       const textResults = await this.performTextSearch(userQuery, category, Math.ceil(limit * 0.3)); // 30% from text search
-      
+
       // Combine and deduplicate
       const combinedResults = [...vectorResults, ...textResults];
       const uniqueResults = combinedResults.filter((doc, index, self) =>
         index === self.findIndex(d => d.id === doc.id)
       );
-      
+
       // Re-rank by similarity score
       return uniqueResults
         .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))

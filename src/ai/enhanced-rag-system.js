@@ -870,59 +870,6 @@ class EnhancedRAGSystem {
       flaggedContent: flaggedContent
     };
   }
-      return {
-        isFaithful: false,
-        score: 0,
-        message: "No supporting documents provided for validation",
-        validatedResponse: aiResponse
-      };
-    }
-
-    // Check if the response contains information from the documents
-    const responseLower = aiResponse.toLowerCase();
-    let supportingEvidenceCount = 0;
-    let totalEvidenceCount = 0;
-
-    for (const doc of retrievedDocs) {
-      if (doc.full_content) {
-        totalEvidenceCount++;
-
-        // Look for key phrases from the document in the response
-        const docContent = doc.full_content.substring(0, 1000).toLowerCase(); // First 1000 chars
-        const docSentences = docContent.split(/[.!?]+/);
-
-        for (const sentence of docSentences) {
-          if (sentence.trim().length > 20) { // Only check meaningful sentences
-            const words = sentence.trim().split(/\s+/);
-            if (words.length >= 3) { // At least 3 words
-              const phrase = words.slice(0, 5).join(' '); // Take first 5 words as phrase
-              if (responseLower.includes(phrase)) {
-                supportingEvidenceCount++;
-                break; // Found evidence in this document
-              }
-            }
-          }
-        }
-      }
-    }
-
-    const faithfulnessScore = totalEvidenceCount > 0 ? supportingEvidenceCount / totalEvidenceCount : 0;
-    let isFaithful = faithfulnessScore >= 0.3; // At least 30% of documents should have supporting evidence
-
-    // If response seems unfaithful, provide a more conservative response
-    let validatedResponse = aiResponse;
-    if (!isFaithful && faithfulnessScore < 0.1) {
-      // The response doesn't seem to be based on the documents, so we should be more careful
-      validatedResponse = "Tôi cần kiểm tra thêm thông tin. Xin vui lòng chờ trong giây lát hoặc bạn có thể cung cấp thêm chi tiết để tôi hỗ trợ tốt hơn.";
-    }
-
-    return {
-      isFaithful,
-      score: faithfulnessScore,
-      message: `Faithfulness score: ${faithfulnessScore.toFixed(2)} (${supportingEvidenceCount}/${totalEvidenceCount} docs supporting)`,
-      validatedResponse
-    };
-  }
 
   /**
    * Enhanced document reranking to improve relevance

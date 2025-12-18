@@ -536,7 +536,7 @@ class EnhancedRAGSystem {
       }
     }
 
-    qualityMetrics.avgSimilarity = knowledgeMetrics.totalDocs > 0
+    qualityMetrics.avgSimilarity = qualityMetrics.totalDocs > 0
       ? totalSimilarity / knowledgeDocs.length
       : 0;
 

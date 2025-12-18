@@ -195,15 +195,17 @@ class EnhancedRAGSystem {
           procedure_title,
           ministry_name,
           source_url,
-          metadata,
-          embedding
+          metadata
         `)
         .limit(limit * 3); // Get more results for better selection
 
-      // Add category filter if provided
-      if (category) {
-        console.log(`🏷️ [Vector Search] Filtering by category: ${category}`);
+      // Add category filter if provided and it's a specific ministry name (not a general category)
+      const generalCategories = ['dichvucong', 'administrative_procedures', 'temporary_residence', 'payment', 'sawaco', 'evnhcmc', 'vneid', 'vssid', 'etax'];
+      if (category && !generalCategories.includes(category)) {
+        console.log(`🏷️ [Vector Search] Filtering by ministry: ${category}`);
         queryBuilder = queryBuilder.ilike('ministry_name', `%${category}%`);  // Use ilike for partial matches
+      } else if (category) {
+        console.log(`🏷️ [Vector Search] General category detected: ${category}, not applying ministry filter`);
       }
 
       // Execute the query
@@ -335,9 +337,14 @@ class EnhancedRAGSystem {
         .limit(limit);
 
       if (category && !skipCategory) {
-        // If category is provided, filter by ministry name
-        console.log(`🏷️ [Text Search] Filtering by category: ${category}`);
-        query = query.eq('ministry_name', category);
+        // Only filter by ministry name if it's a specific ministry (not a general category)
+        const generalCategories = ['dichvucong', 'administrative_procedures', 'temporary_residence', 'payment', 'sawaco', 'evnhcmc', 'vneid', 'vssid', 'etax'];
+        if (!generalCategories.includes(category)) {
+          console.log(`🏷️ [Text Search] Filtering by ministry: ${category}`);
+          query = query.eq('ministry_name', category);
+        } else {
+          console.log(`🏷️ [Text Search] General category detected: ${category}, not applying ministry filter`);
+        }
       }
 
       console.log(`📡 [Text Search] Executing text search query...`);

@@ -268,9 +268,9 @@ class BaseChatbotService {
             // Use the new AI Router for all AI operations
             this.aiRouter = require('../ai/ai-router');
 
-            // Update the callAI method to use the new router with caching
+            // Temporarily use the direct routing without complex caching to avoid hanging
             this.callAI = async (messages, sender_psid) => {
-                return await this.aiRouter.routeAIRequestWithCaching(messages, sender_psid);
+                return await this.aiRouter.routeAIRequest(messages, sender_psid);
             };
 
             // Update audio transcription to use the new router
@@ -406,40 +406,34 @@ class BaseChatbotService {
             is_first_time_user: !this.userSessions.has(sender_psid)
         };
 
-        const requestHandler = {
-            handler: async () => {
-                let processingPromise;
-                if (webhook_event.message && webhook_event.message.text) {
-                    processingPromise = this.processMessage(sender_psid, webhook_event.message, requestKey);
-                } else if (webhook_event.message && webhook_event.message.attachments) {
-                    processingPromise = this.processAttachment(sender_psid, webhook_event.message, requestKey);
-                } else {
-                    await this.callSendAPI(sender_psid, { text: "Xin lỗi, tôi chỉ hỗ trợ văn bản, hình ảnh, âm thanh. 😊" });
-                    return;
-                }
+        const requestHandler = async () => {
+            let processingPromise;
+            if (webhook_event.message && webhook_event.message.text) {
+                processingPromise = this.processMessage(sender_psid, webhook_event.message, requestKey);
+            } else if (webhook_event.message && webhook_event.message.attachments) {
+                processingPromise = this.processAttachment(sender_psid, webhook_event.message, requestKey);
+            } else {
+                await this.callSendAPI(sender_psid, { text: "Xin lỗi, tôi chỉ hỗ trợ văn bản, hình ảnh, âm thanh. 😊" });
+                return;
+            }
 
-                this.processingRequests.set(sender_psid, processingPromise);
-                try {
-                    await processingPromise;
-                } finally {
-                    this.processingRequests.delete(sender_psid);
-                }
+            this.processingRequests.set(sender_psid, processingPromise);
+            try {
+                await processingPromise;
+            } finally {
+                this.processingRequests.delete(sender_psid);
             }
         };
 
         try {
-            // Use the new smart queue with context
-            await this.requestQueue.addRequest(requestHandler, sender_psid, requestContext);
-
-            // Process available requests
-            setTimeout(async () => {
-                await this.requestQueue.processAvailable();
-            }, 100);
+            // For now, execute the request handler directly to avoid queue issues
+            // This bypasses the complex queue system and executes immediately
+            await requestHandler();
 
         } catch (error) {
-            console.error(`❌ Queue error for ${sender_psid}:`, error);
+            console.error(`❌ Error processing request for ${sender_psid}:`, error);
             await this.callSendAPI(sender_psid, {
-                text: "Xin lỗi, hệ thống đang quá tải. Vui lòng thử lại sau ít phút! 🙏"
+                text: "Xin lỗi, hệ thống đang gặp sự cố. Vui lòng thử lại sau ít phút! 🙏"
             });
         }
     }
@@ -598,49 +592,42 @@ class BaseChatbotService {
                 text = getErrorMessage('SYSTEM_ERROR');
             }
 
-            // First, try to get from improved cache to avoid calling AI if possible
-            const aiCacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, detectedContext);
-            let aiCachedResult = await improvedCache.get(aiCacheKey);
-
-            if (!aiCachedResult) {
-                // Validate response against knowledge base for accuracy using the new RAG validation
-                const ragSystem = this.ragSystem; // Use the existing RAG system instance
-                if (ragSystem && relevantKnowledge && relevantKnowledge.length > 0) {
-                    // Check for potential hallucinations
-                    const hallucinationCheck = ragSystem.isResponseHallucinated(text, userMessage, relevantKnowledge);
-                    if (hallucinationCheck.isHallucinated) {
-                        console.log(`⚠️ Potential hallucination detected: ${hallucinationCheck.flaggedContent.join(', ')}`);
-                        // For now, we'll continue with the original response but in the future we might want to handle this differently
-                    }
-
-                    // Validate response faithfulness
-                    const validation = ragSystem.validateResponseAgainstDocuments(text, relevantKnowledge);
-                    if (!validation.isValid && validation.confidence < 0.5) {
-                        console.log(`⚠️ Low confidence response (${validation.confidence.toFixed(2)}): ${validation.message}`);
-                        // Use validated response if available
-                        if (validation.validatedResponse !== text) {
-                            text = validation.validatedResponse;
-                        }
-                    }
+            // Validate response against knowledge base for accuracy using the RAG validation
+            const ragSystem = this.ragSystem; // Use the existing RAG system instance
+            if (ragSystem && relevantKnowledge && relevantKnowledge.length > 0) {
+                // Check for potential hallucinations
+                const hallucinationCheck = ragSystem.isResponseHallucinated(text, userMessage, relevantKnowledge);
+                if (hallucinationCheck.isHallucinated) {
+                    console.log(`⚠️ Potential hallucination detected: ${hallucinationCheck.flaggedContent.join(', ')}`);
+                    // For now, we'll continue with the original response
                 }
 
-                // Cache the processed response
-                await improvedCache.cacheAIResponse(userMessage, sender_psid, text, this.aiProvider, detectedContext);
-            } else {
-                text = aiCachedResult.response;
-                console.log(`✅ Used cached AI response for: ${aiCacheKey}`);
+                // Validate response faithfulness
+                const validation = ragSystem.validateResponseAgainstDocuments(text, relevantKnowledge);
+                if (!validation.isValid && validation.confidence < 0.5) {
+                    console.log(`⚠️ Low confidence response (${validation.confidence.toFixed(2)}): ${validation.message}`);
+                    // Use validated response if available
+                    if (validation.validatedResponse !== text) {
+                        text = validation.validatedResponse;
+                    }
+                }
             }
 
             // Post-process the response to remove irrelevant content
             text = this.postProcessResponse(text, userMessage);
 
-            // Cache the response for future use
-            aiResponseCache.setCachedResponse(
-                { userMessage, sender_psid },
-                text,
-                { context: detectedContext },
-                this.aiProvider
-            );
+            // Cache the response for future use (simple cache without complex logic)
+            try {
+                aiResponseCache.setCachedResponse(
+                    { userMessage, sender_psid },
+                    text,
+                    { context: detectedContext },
+                    this.aiProvider
+                );
+            } catch (cacheError) {
+                console.warn('⚠️ Cache error (non-critical):', cacheError.message);
+                // Continue processing even if cache fails
+            }
 
             const responseTime = Date.now() - startTime;
 

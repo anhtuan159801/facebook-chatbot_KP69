@@ -244,9 +244,9 @@ class BaseChatbotService {
         
         // Health check
         this.app.get('/health', (req, res) => {
-            const queueStatus = this.requestQueue.getStatus();
-            res.status(200).json({ 
-                status: 'OK', 
+            const queueStatus = this.requestQueue.getStats();
+            res.status(200).json({
+                status: 'OK',
                 service: this.serviceName,
                 aiProvider: this.aiProvider,
                 timestamp: new Date().toISOString(),

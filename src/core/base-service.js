@@ -597,19 +597,19 @@ class BaseChatbotService {
             if (ragSystem && relevantKnowledge && relevantKnowledge.length > 0) {
                 // Check for potential hallucinations - more aggressive validation
                 const hallucinationCheck = ragSystem.isResponseHallucinated(text, userMessage, relevantKnowledge);
-                if (hallucinationCheck.isHallucinated) {
-                    console.log(`⚠️ Potential hallucination detected: ${hallucinationCheck.flaggedContent.join(', ')}`);
+                if (hallucinationCheck && hallucinationCheck.isHallucinated) {
+                    console.log(`⚠️ Potential hallucination detected: ${hallucinationCheck.flaggedContent ? hallucinationCheck.flaggedContent.join(', ') : 'Unknown'}`);
                     // If highly likely to be hallucinated, try to get a better response using validated content
                     const validation = ragSystem.validateResponseAgainstDocuments(text, relevantKnowledge);
-                    if (validation.validatedResponse !== text) {
+                    if (validation && validation.validatedResponse !== text) {
                         text = validation.validatedResponse;
                     }
                 }
 
                 // Validate response faithfulness - more stringent validation
                 const validation = ragSystem.validateResponseAgainstDocuments(text, relevantKnowledge);
-                if (!validation.isValid || validation.confidence < 0.6) { // Raised threshold from 0.5 to 0.6
-                    console.log(`⚠️ Low confidence response (${validation.confidence.toFixed(2)}): ${validation.message}`);
+                if (validation && (!validation.isValid || validation.confidence < 0.6)) { // Raised threshold from 0.5 to 0.6
+                    console.log(`⚠️ Low confidence response (${validation.confidence ? validation.confidence.toFixed(2) : 'N/A'}): ${validation.message || 'Unknown error'}`);
                     // Use validated response if available and it's more reliable
                     if (validation.validatedResponse && validation.confidence > 0.3) {
                         text = validation.validatedResponse;

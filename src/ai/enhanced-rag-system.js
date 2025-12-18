@@ -97,18 +97,25 @@ class EnhancedRAGSystem {
         return await this.getRelevantKnowledgeFromFileSystem(userQuery, category);
       }
 
+      console.log(`🔍 [Supabase] Starting knowledge retrieval for query: "${userQuery.substring(0, 30)}..."`);
+
       // First, try to use vector similarity search if available
       let relevantDocs = [];
 
       try {
         // Generate embedding for the user query
+        console.log(`📊 [Supabase] Generating embedding for query: "${userQuery.substring(0, 30)}..."`);
         const queryEmbedding = await this.generateEmbeddingWithCache(userQuery);
 
+        console.log(`🔍 [Supabase] Performing vector similarity search...`);
         // Perform vector similarity search
         relevantDocs = await this.performVectorSearch(queryEmbedding, category);
 
+        console.log(`📊 [Supabase] Vector search completed, found ${relevantDocs.length} results`);
+
         // If vector search didn't return enough results, supplement with text search
         if (relevantDocs.length < 3) {
+          console.log(`🔍 [Supabase] Insufficient vector results, supplementing with text search...`);
           const textSearchResults = await this.performTextSearch(userQuery, category, 5 - relevantDocs.length);
           // Combine and deduplicate results
           const combinedResults = [...relevantDocs, ...textSearchResults];
@@ -117,12 +124,15 @@ class EnhancedRAGSystem {
             index === self.findIndex(d => d.id === doc.id)
           );
           relevantDocs = uniqueResults;
+          console.log(`📊 [Supabase] Combined search completed, total results: ${relevantDocs.length}`);
         }
       } catch (vectorError) {
         // If vector search fails (e.g., no vector column), fallback to text search
         this.logger.warn(`Vector search failed, falling back to text search: ${vectorError.message}`);
         try {
+          console.log(`🔍 [Supabase] Performing text search...`);
           relevantDocs = await this.performTextSearch(userQuery, category, 5);
+          console.log(`📊 [Supabase] Text search completed, found ${relevantDocs.length} results`);
         } catch (textSearchError) {
           this.logger.error(`Both vector and text search failed: ${textSearchError.message}`);
           return []; // Return empty array if both searches fail
@@ -148,6 +158,7 @@ class EnhancedRAGSystem {
       }));
 
       // Log the quality of results
+      console.log(`✅ [Supabase] Completed knowledge retrieval: ${formattedResults.length} relevant documents for query: "${userQuery.substring(0, 30)}..."`);
       this.logger.info(`Retrieved ${formattedResults.length} relevant documents for query: "${userQuery.substring(0, 50)}..."`);
 
       return formattedResults;
@@ -173,6 +184,8 @@ class EnhancedRAGSystem {
    */
   async performVectorSearch(queryEmbedding, category = null, limit = 5) {
     try {
+      console.log(`🔍 [Vector Search] Starting vector search with category: ${category || 'all'}`);
+
       let queryBuilder = this.supabase
         .from('government_procedures_knowledge')
         .select(`
@@ -183,21 +196,26 @@ class EnhancedRAGSystem {
           ministry_name,
           source_url,
           metadata,
-          embedding  -- Include embedding for more advanced vector operations if needed
+          embedding /* Include embedding for more advanced vector operations if needed */
         `)
         .limit(limit * 3); // Get more results for better selection
 
       // Add category filter if provided
       if (category) {
+        console.log(`🏷️ [Vector Search] Filtering by category: ${category}`);
         queryBuilder = queryBuilder.ilike('ministry_name', `%${category}%`);  // Use ilike for partial matches
       }
 
       // Execute the query
+      console.log(`📡 [Vector Search] Executing Supabase query...`);
       const { data: allDocs, error } = await queryBuilder;
 
       if (error) {
+        console.error(`❌ [Vector Search] Query failed: ${error.message}`);
         throw new Error(`Vector search query failed: ${error.message}`);
       }
+
+      console.log(`📊 [Vector Search] Retrieved ${allDocs.length} documents, calculating similarity scores...`);
 
       // Calculate similarity scores for each document
       const similarityResults = [];
@@ -244,11 +262,15 @@ class EnhancedRAGSystem {
       // Log quality metrics
       if (finalResults.length > 0) {
         const avgSimilarity = finalResults.reduce((sum, doc) => sum + (doc.similarity || 0), 0) / finalResults.length;
+        console.log(`✅ [Vector Search] Completed: ${finalResults.length} results, avg similarity: ${avgSimilarity.toFixed(3)}`);
         this.logger.info(`Vector search quality: ${finalResults.length} results, avg similarity: ${avgSimilarity.toFixed(3)}`);
+      } else {
+        console.log(`⚠️ [Vector Search] No results above similarity threshold`);
       }
 
       return finalResults;
     } catch (error) {
+      console.error(`❌ [Vector Search] Error: ${error.message}`);
       this.logger.warn(`Vector search error, falling back to text search: ${error.message}`);
       // In a real implementation with proper vector database, this would work
       // For now, we'll return text search results
@@ -293,6 +315,8 @@ class EnhancedRAGSystem {
    */
   async performTextSearch(userQuery, category = null, limit = 5, skipCategory = false) {
     try {
+      console.log(`🔍 [Text Search] Starting text search for query: "${userQuery.substring(0, 30)}..."`);
+
       let query = this.supabase
         .from('government_procedures_knowledge')
         .select(`
@@ -312,15 +336,19 @@ class EnhancedRAGSystem {
 
       if (category && !skipCategory) {
         // If category is provided, filter by ministry name
+        console.log(`🏷️ [Text Search] Filtering by category: ${category}`);
         query = query.eq('ministry_name', category);
       }
 
+      console.log(`📡 [Text Search] Executing text search query...`);
       const { data: relevantDocs, error } = await query;
 
       if (error) {
-        console.error('Text search error:', error);
+        console.error(`❌ [Text Search] Query failed: ${error.message}`);
         return [];
       }
+
+      console.log(`📊 [Text Search] Retrieved ${relevantDocs.length} documents, calculating keyword scores...`);
 
       // Add similarity scores based on keyword matching
       const resultsWithScores = relevantDocs.map(doc => {
@@ -345,9 +373,10 @@ class EnhancedRAGSystem {
         };
       });
 
+      console.log(`✅ [Text Search] Completed: ${resultsWithScores.length} results`);
       return resultsWithScores;
     } catch (error) {
-      console.error('Text search error:', error);
+      console.error(`❌ [Text Search] Error: ${error.message}`);
       return [];
     }
   }

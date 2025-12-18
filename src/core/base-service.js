@@ -496,9 +496,9 @@ class BaseChatbotService {
 
             // First, try to get from improved cache to avoid calling AI if possible
             const aiCacheKey = improvedCache.generateAIResponseCacheKey(userMessage, sender_psid, this.aiProvider, detectedContext);
-            let cachedResult = await improvedCache.get(aiCacheKey);
+            let aiCachedResult = await improvedCache.get(aiCacheKey);
 
-            if (!cachedResult) {
+            if (!aiCachedResult) {
                 // Validate response against knowledge base for accuracy using the new RAG validation
                 const ragSystem = this.ragSystem; // Use the existing RAG system instance
                 if (ragSystem && relevantKnowledge && relevantKnowledge.length > 0) {
@@ -523,7 +523,7 @@ class BaseChatbotService {
                 // Cache the processed response
                 await improvedCache.cacheAIResponse(userMessage, sender_psid, text, this.aiProvider, detectedContext);
             } else {
-                text = cachedResult.response;
+                text = aiCachedResult.response;
                 console.log(`✅ Used cached AI response for: ${aiCacheKey}`);
             }
 
@@ -686,14 +686,14 @@ class BaseChatbotService {
             // First, try to get from improved cache to avoid calling AI if possible
             const imageUserMessage = "Analyze this image: " + (IMAGE_ANALYSIS_PROMPT || "Image analysis request");
             const imageCacheKey = improvedCache.generateAIResponseCacheKey(imageUserMessage, sender_psid, this.aiProvider, 'image');
-            let cachedResult = await improvedCache.get(imageCacheKey);
+            let imageCachedResult = await improvedCache.get(imageCacheKey);
 
-            if (!cachedResult) {
+            if (!imageCachedResult) {
                 // For image processing, we might not have specific knowledge to validate against
                 // But we can still cache the result for future similar requests
                 await improvedCache.cacheAIResponse(imageUserMessage, sender_psid, text, this.aiProvider, 'image');
             } else {
-                text = cachedResult.response;
+                text = imageCachedResult.response;
                 console.log(`✅ Used cached image analysis response for: ${imageCacheKey}`);
             }
 
@@ -793,14 +793,14 @@ class BaseChatbotService {
             // First, try to get from improved cache to avoid calling AI if possible
             const audioUserMessage = transcript; // Use the transcribed audio as the message for caching
             const audioCacheKey = improvedCache.generateAIResponseCacheKey(audioUserMessage, sender_psid, this.aiProvider, 'audio');
-            let cachedResult = await improvedCache.get(audioCacheKey);
+            let audioCachedResult = await improvedCache.get(audioCacheKey);
 
-            if (!cachedResult) {
+            if (!audioCachedResult) {
                 // For audio processing, we might not have specific knowledge to validate against
                 // But we can still cache the result for future similar requests
                 await improvedCache.cacheAIResponse(audioUserMessage, sender_psid, text, this.aiProvider, 'audio');
             } else {
-                text = cachedResult.response;
+                text = audioCachedResult.response;
                 console.log(`✅ Used cached audio response for: ${audioCacheKey}`);
             }
 

@@ -39,6 +39,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { createLogger, ErrorHandler } = require('../utils/enhanced-logger');
 const aiProviderManager = require('../ai/ai-provider-manager');
 const EnhancedRAGSystem = require('../ai/enhanced-rag-system');
+const ChatHistoryService = require('../core/chat-history-service');
 const ChatHistoryManager = require('../utils/chat-history-manager');
 const KnowledgeManager = require('../utils/knowledge-manager');
 

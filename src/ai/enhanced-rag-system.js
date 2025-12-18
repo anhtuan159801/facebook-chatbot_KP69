@@ -196,7 +196,7 @@ class EnhancedRAGSystem {
           ministry_name,
           source_url,
           metadata,
-          embedding /* Include embedding for more advanced vector operations if needed */
+          embedding
         `)
         .limit(limit * 3); // Get more results for better selection
 

@@ -1055,7 +1055,7 @@ class BaseChatbotService {
                 // Try to get from user_chat_history table (our primary chat history table)
                 const { data: userChatHistory, error: userChatHistoryError } = await supabase
                     .from('user_chat_history')
-                    .select('user_request as message_content, chatbot_response, created_at')
+                    .select('user_request, chatbot_response, created_at')
                     .eq('facebook_user_id', userId)
                     .order('created_at', { ascending: false })
                     .limit(20);
@@ -1064,9 +1064,9 @@ class BaseChatbotService {
                     // Convert user_chat_history format to the expected format
                     conversations = [];
                     userChatHistory.forEach(item => {
-                        if (item.message_content) {
+                        if (item.user_request) {
                             conversations.push({
-                                message_content: item.message_content,
+                                message_content: item.user_request,
                                 message_type: 'user',
                                 created_at: item.created_at
                             });
@@ -1083,13 +1083,30 @@ class BaseChatbotService {
                     // Fallback to user_chat_history table if primary query has issues
                     const { data: convHistory, error: convError } = await supabase
                         .from('user_chat_history')
-                        .select('user_request as message_content, chatbot_response, created_at')
+                        .select('user_request, chatbot_response, created_at')
                         .eq('facebook_user_id', userId)
                         .order('created_at', { ascending: false })
                         .limit(20);
 
                     if (!convError) {
-                        conversations = convHistory;
+                        // Process the history data to the expected format
+                        conversations = [];
+                        convHistory.forEach(item => {
+                            if (item.user_request) {
+                                conversations.push({
+                                    message_content: item.user_request,
+                                    message_type: 'user',
+                                    created_at: item.created_at
+                                });
+                            }
+                            if (item.chatbot_response) {
+                                conversations.push({
+                                    message_content: item.chatbot_response,
+                                    message_type: 'assistant',
+                                    created_at: item.created_at
+                                });
+                            }
+                        });
                     } else {
                         error = convError;
                     }

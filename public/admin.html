@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Quản Trị - Hệ Thống Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            height: 300px;
+        }
+        
+        .section-title {
+            color: #2c3e50;
+            margin: 20px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background-color: #f8f9ff;
+        }
+        
+        .status-active {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .status-inactive {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin: 2px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            background: #f8f9fa;
+            border-right: 1px solid #eee;
+            font-weight: 600;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-panel {
+            display: none;
+        }
+        
+        .tab-panel.active {
+            display: block;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Dashboard Quản Trị Hệ Thống Chatbot</h1>
+            <p>Quản lý và giám sát hệ thống chatbot hiệu quả</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+            <div class="tab" onclick="switchTab('models')">Mô Hình AI</div>
+            <div class="tab" onclick="switchTab('apikeys')">API Keys</div>
+            <div class="tab" onclick="switchTab('conversations')">Hội thoại</div>
+            <div class="tab" onclick="switchTab('feedback')">Phản hồi</div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-panel active">
+            <div class="card-grid">
+                <div class="card">
+                    <h3>📅 Tổng hội thoại</h3>
+                    <div class="stat-number" id="total-conversations">0</div>
+                    <p>Hội thoại đã xử lý</p>
+                </div>
+                <div class="card">
+                    <h3>👥 Người dùng hoạt động</h3>
+                    <div class="stat-number" id="active-users">0</div>
+                    <p>Trong 24 giờ qua</p>
+                </div>
+                <div class="card">
+                    <h3>⚡ Thời gian phản hồi trung bình</h3>
+                    <div class="stat-number" id="avg-response-time">0s</div>
+                    <p>Giây</p>
+                </div>
+                <div class="card">
+                    <h3>🏥 Trạng thái hệ thống</h3>
+                    <div class="stat-number" id="system-health">Unknown</div>
+                    <p>Hiệu suất hệ thống</p>
+                </div>
+            </div>
+
+            <h3 class="section-title">📊 Xu hướng hội thoại</h3>
+            <div class="chart-container" id="conversations-chart">
+                <canvas id="conversations-chart-canvas"></canvas>
+            </div>
+
+            <h3 class="section-title">📈 Tỷ lệ sử dụng mô hình</h3>
+            <div class="chart-container" id="model-usage-chart">
+                <canvas id="model-usage-chart-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Models Tab -->
+        <div id="models" class="tab-panel">
+            <h3 class="section-title">⚙️ Quản lý mô hình AI</h3>
+            <button class="btn btn-primary" onclick="toggleAddModelForm()">+ Thêm mô hình</button>
+            
+            <div id="add-model-form" class="card hidden" style="margin-top: 20px;">
+                <h3>Thêm mô hình mới</h3>
+                <div class="form-group">
+                    <label>Tên mô hình:</label>
+                    <input type="text" id="model-name" placeholder="Ví dụ: Gemini Pro">
+                </div>
+                <div class="form-group">
+                    <label>Nhà cung cấp:</label>
+                    <select id="model-provider">
+                        <option value="Google">Google</option>
+                        <option value="OpenRouter">OpenRouter</option>
+                        <option value="HuggingFace">HuggingFace</option>
+                        <option value="Other">Khác</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>API Key:</label>
+                    <input type="password" id="model-api-key" placeholder="Nhập API key">
+                </div>
+                <button class="btn btn-success" onclick="addModel()">Thêm mô hình</button>
+                <button class="btn btn-danger" onclick="toggleAddModelForm()">Hủy</button>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <table id="models-table">
+                    <thead>
+                        <tr>
+                            <th>Tên mô hình</th>
+                            <th>Nhà cung cấp</th>
+                            <th>Trạng thái</th>
+                            <th>Sử dụng</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="models-tbody">
+                        <!-- Models will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- API Keys Tab -->
+        <div id="apikeys" class="tab-panel">
+            <h3 class="section-title">🔑 Quản lý API Keys</h3>
+            <button class="btn btn-primary" onclick="toggleAddApiKeyForm()">+ Thêm API Key</button>
+            
+            <div id="add-apikey-form" class="card hidden" style="margin-top: 20px;">
+                <h3>Thêm API Key mới</h3>
+                <div class="form-group">
+                    <label>Tên:</label>
+                    <input type="text" id="apikey-name" placeholder="Ví dụ: Google Gemini Key">
+                </div>
+                <div class="form-group">
+                    <label>Nhà cung cấp:</label>
+                    <select id="apikey-provider">
+                        <option value="Google">Google</option>
+                        <option value="OpenRouter">OpenRouter</option>
+                        <option value="HuggingFace">HuggingFace</option>
+                        <option value="Other">Khác</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>API Key:</label>
+                    <input type="password" id="apikey-value" placeholder="Nhập API key">
+                </div>
+                <button class="btn btn-success" onclick="addApiKey()">Thêm Key</button>
+                <button class="btn btn-danger" onclick="toggleAddApiKeyForm()">Hủy</button>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <table id="apikeys-table">
+                    <thead>
+                        <tr>
+                            <th>Tên</th>
+                            <th>Nhà cung cấp</th>
+                            <th>Trạng thái</th>
+                            <th>Sử dụng</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="apikeys-tbody">
+                        <!-- API Keys will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Conversations Tab -->
+        <div id="conversations" class="tab-panel">
+            <h3 class="section-title">💬 Hội thoại gần đây</h3>
+            <div id="conversations-list">
+                <!-- Conversations will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Feedback Tab -->
+        <div id="feedback" class="tab-panel">
+            <h3 class="section-title">📢 Phản hồi người dùng</h3>
+            <div id="feedback-list">
+                <!-- Feedback will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Hide all tab panels
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab panel and mark tab as active
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Load data for the selected tab
+            switch(tabName) {
+                case 'dashboard':
+                    loadDashboardStats();
+                    loadConversationsChart();
+                    loadModelUsageChart();
+                    break;
+                case 'models':
+                    loadModels();
+                    break;
+                case 'apikeys':
+                    loadApiKeys();
+                    break;
+                case 'conversations':
+                    loadConversations();
+                    break;
+                case 'feedback':
+                    loadFeedback();
+                    break;
+            }
+        }
+
+        // Toggle forms
+        function toggleAddModelForm() {
+            const form = document.getElementById('add-model-form');
+            form.classList.toggle('hidden');
+            if (!form.classList.contains('hidden')) {
+                document.getElementById('model-name').focus();
+            }
+        }
+
+        function toggleAddApiKeyForm() {
+            const form = document.getElementById('add-apikey-form');
+            form.classList.toggle('hidden');
+            if (!form.classList.contains('hidden')) {
+                document.getElementById('apikey-name').focus();
+            }
+        }
+
+        // API Functions
+        async function apiCall(endpoint, options = {}) {
+            const response = await fetch(`/admin${endpoint}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Admin-Token': localStorage.getItem('admin_token') || ''
+                },
+                ...options
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            
+            return response.json();
+        }
+
+        // Dashboard functions
+        async function loadDashboardStats() {
+            try {
+                const stats = await apiCall('/stats/system');
+                document.getElementById('total-conversations').textContent = stats.totalConversations || 0;
+                document.getElementById('active-users').textContent = stats.activeUsers || 0;
+                document.getElementById('system-health').textContent = stats.status || 'unknown';
+                document.getElementById('avg-response-time').textContent = (stats.avgResponseTime || 0).toFixed(2) + 's';
+            } catch (error) {
+                console.error('Error loading dashboard stats:', error);
+            }
+        }
+
+        async function loadConversationsChart() {
+            try {
+                const ctx = document.getElementById('conversations-chart-canvas').getContext('2d');
+                
+                // Simulated data - in real implementation, fetch from API
+                const data = {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Hội thoại',
+                        data: [120, 190, 150, 210, 180, 240],
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        tension: 0.1
+                    }]
+                };
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading conversations chart:', error);
+            }
+        }
+
+        async function loadModelUsageChart() {
+            try {
+                const ctx = document.getElementById('model-usage-chart-canvas').getContext('2d');
+                
+                // Simulated data - in real implementation, fetch from API
+                const data = {
+                    labels: ['Gemini', 'OpenRouter', 'HuggingFace'],
+                    datasets: [{
+                        label: 'Tỷ lệ sử dụng (%)',
+                        data: [65, 25, 10],
+                        backgroundColor: [
+                            'rgb(255, 99, 132)',
+                            'rgb(54, 162, 235)',
+                            'rgb(255, 205, 86)'
+                        ],
+                        borderWidth: 1
+                    }]
+                };
+
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading model usage chart:', error);
+            }
+        }
+
+        // Models functions
+        async function loadModels() {
+            try {
+                const models = await apiCall('/models');
+                const tbody = document.getElementById('models-tbody');
+                tbody.innerHTML = '';
+
+                models.forEach(model => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${model.name}</td>
+                        <td>${model.provider}</td>
+                        <td><span class="status-${model.status}">${model.status}</span></td>
+                        <td>${model.usageCount || 0} requests</td>
+                        <td>
+                            <button class="btn ${model.status === 'active' ? 'btn-danger' : 'btn-success'}" 
+                                onclick="toggleModelStatus('${model.id}', '${model.status}')">
+                                ${model.status === 'active' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading models:', error);
+            }
+        }
+
+        async function addModel() {
+            const name = document.getElementById('model-name').value;
+            const provider = document.getElementById('model-provider').value;
+            const apiKey = document.getElementById('model-api-key').value;
+
+            if (!name || !provider || !apiKey) {
+                alert('Vui lòng điền đầy đủ thông tin');
+                return;
+            }
+
+            try {
+                await apiCall('/models', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, provider, apiKey })
+                });
+                
+                document.getElementById('model-name').value = '';
+                document.getElementById('model-api-key').value = '';
+                toggleAddModelForm();
+                loadModels();
+            } catch (error) {
+                console.error('Error adding model:', error);
+                alert('Lỗi khi thêm mô hình');
+            }
+        }
+
+        async function toggleModelStatus(modelId, currentStatus) {
+            try {
+                const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+                await apiCall(`/models/${modelId}/${newStatus ? 'activate' : 'deactivate'}`, {
+                    method: 'POST'
+                });
+                loadModels();
+            } catch (error) {
+                console.error('Error toggling model status:', error);
+                alert('Lỗi khi cập nhật trạng thái mô hình');
+            }
+        }
+
+        // API Keys functions
+        async function loadApiKeys() {
+            try {
+                const keys = await apiCall('/api-keys');
+                const tbody = document.getElementById('apikeys-tbody');
+                tbody.innerHTML = '';
+
+                keys.forEach(key => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${key.name}</td>
+                        <td>${key.provider}</td>
+                        <td><span class="status-${key.status}">${key.status}</span></td>
+                        <td>${key.usageCount || 0} requests</td>
+                        <td>
+                            <button class="btn ${key.status === 'active' ? 'btn-danger' : 'btn-success'}" 
+                                onclick="toggleApiKeyStatus('${key.id}', '${key.status}')">
+                                ${key.status === 'active' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteApiKey('${key.id}')">Xóa</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading API keys:', error);
+            }
+        }
+
+        async function addApiKey() {
+            const name = document.getElementById('apikey-name').value;
+            const provider = document.getElementById('apikey-provider').value;
+            const value = document.getElementById('apikey-value').value;
+
+            if (!name || !provider || !value) {
+                alert('Vui lòng điền đầy đủ thông tin');
+                return;
+            }
+
+            try {
+                await apiCall('/api-keys', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, provider, value })
+                });
+                
+                document.getElementById('apikey-name').value = '';
+                document.getElementById('apikey-value').value = '';
+                toggleAddApiKeyForm();
+                loadApiKeys();
+            } catch (error) {
+                console.error('Error adding API key:', error);
+                alert('Lỗi khi thêm API key');
+            }
+        }
+
+        async function toggleApiKeyStatus(keyId, currentStatus) {
+            try {
+                const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+                await apiCall(`/api-keys/${keyId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: newStatus })
+                });
+                loadApiKeys();
+            } catch (error) {
+                console.error('Error toggling API key status:', error);
+                alert('Lỗi khi cập nhật trạng thái API key');
+            }
+        }
+
+        async function deleteApiKey(keyId) {
+            if (confirm('Bạn có chắc chắn muốn xóa API key này?')) {
+                try {
+                    await apiCall(`/api-keys/${keyId}`, {
+                        method: 'DELETE'
+                    });
+                    loadApiKeys();
+                } catch (error) {
+                    console.error('Error deleting API key:', error);
+                    alert('Lỗi khi xóa API key');
+                }
+            }
+        }
+
+        // Placeholder functions for other tabs
+        async function loadConversations() {
+            const container = document.getElementById('conversations-list');
+            container.innerHTML = '<p>Đang tải hội thoại...</p>';
+            
+            try {
+                // In real implementation, fetch conversations from API
+                const conversations = await apiCall('/conversations');
+                container.innerHTML = `<pre>${JSON.stringify(conversations, null, 2)}</pre>`;
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                container.innerHTML = '<p>Lỗi khi tải hội thoại</p>';
+            }
+        }
+
+        async function loadFeedback() {
+            const container = document.getElementById('feedback-list');
+            container.innerHTML = '<p>Đang tải phản hồi...</p>';
+            
+            try {
+                // In real implementation, fetch feedback from API
+                const feedback = await apiCall('/feedback');
+                container.innerHTML = `<pre>${JSON.stringify(feedback, null, 2)}</pre>`;
+            } catch (error) {
+                console.error('Error loading feedback:', error);
+                container.innerHTML = '<p>Lỗi khi tải phản hồi</p>';
+            }
+        }
+
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default admin token if not exists (for demo purposes)
+            if (!localStorage.getItem('admin_token')) {
+                // In a real scenario, admin would get this from a secure login
+                // For now, we'll prompt for it
+                const token = prompt('Enter Admin Token:', 'admin123');
+                if (token) {
+                    localStorage.setItem('admin_token', token);
+                }
+            }
+            
+            // Load the dashboard stats initially
+            loadDashboardStats();
+            loadConversationsChart();
+            loadModelUsageChart();
+        });
+    </script>
+</body>
+</html>

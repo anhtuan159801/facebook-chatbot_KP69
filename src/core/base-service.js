@@ -7,6 +7,7 @@
 
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 
 // Use the new optimized database manager
 const dbManager = require('../utils/database-manager');
@@ -186,11 +187,69 @@ class BaseChatbotService {
                         ]
                     });
                 });
+
+                // Serve the admin dashboard from root when admin interface is enabled
+                this.app.get('/', (req, res) => {
+                    // Check if admin token is provided via header or query param
+                    const adminToken = req.headers['x-admin-token'] || req.query.adminToken;
+                    const expectedToken = process.env.ADMIN_TOKEN || 'admin123'; // Default for demo
+
+                    if (adminToken === expectedToken) {
+                        // Set the admin token in response header for the frontend to use
+                        res.setHeader('X-Admin-Token-Valid', 'true');
+                        // Serve the admin dashboard
+                        res.sendFile(path.join(__dirname, '..', '..', 'public', 'admin.html'));
+                    } else {
+                        // If not authenticated, either redirect to login or show unauthorized
+                        res.status(401).json({ error: 'Unauthorized. Please provide valid admin token.' });
+                    }
+                });
+
+                // Also serve admin.html at /admin/dashboard
+                this.app.get('/admin/dashboard', (req, res) => {
+                    const adminToken = req.headers['x-admin-token'] || req.query.adminToken;
+                    const expectedToken = process.env.ADMIN_TOKEN || 'admin123';
+
+                    if (adminToken === expectedToken) {
+                        res.setHeader('X-Admin-Token-Valid', 'true');
+                        res.sendFile(path.join(__dirname, '..', '..', 'public', 'admin.html'));
+                    } else {
+                        res.status(401).json({ error: 'Unauthorized' });
+                    }
+                });
+
             } catch (error) {
                 console.error('❌ Failed to initialize admin API:', error);
                 // Continue without admin interface if initialization fails
             }
         } else {
+            // If admin interface is disabled, serve a simple welcome page
+            this.app.get('/', (req, res) => {
+                res.send(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Facebook Chatbot System</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                            .container { max-width: 600px; margin: 0 auto; }
+                            h1 { color: #333; }
+                            .note { background: #f0f0f0; padding: 20px; border-radius: 5px; margin: 20px 0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <h1>🤖 Facebook Chatbot System</h1>
+                            <p>Hệ thống chatbot hỗ trợ người dân trong các thủ tục hành chính Việt Nam</p>
+                            <div class="note">
+                                <h3>ℹ️ Lưu ý</h3>
+                                <p>Admin dashboard đang bị tắt. Để bật, vui lòng đặt <code>ENABLE_ADMIN_INTERFACE=true</code> trong biến môi trường.</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            });
             console.log('ℹ️ Admin interface is disabled (set ENABLE_ADMIN_INTERFACE=true to enable)');
         }
     }

@@ -190,23 +190,6 @@ class BaseChatbotService {
                     });
                 });
 
-                // Serve the admin dashboard from root when admin interface is enabled
-                this.app.get('/', (req, res) => {
-                    // Check if admin token is provided via header or query param
-                    const adminToken = req.headers['x-admin-token'] || req.query.adminToken;
-                    const expectedToken = process.env.ADMIN_TOKEN || 'admin123'; // Default for demo
-
-                    if (adminToken === expectedToken) {
-                        // Set the admin token in response header for the frontend to use
-                        res.setHeader('X-Admin-Token-Valid', 'true');
-                        // Serve the admin dashboard from public directory
-                        const adminHtmlPath = path.join(__dirname, '..', '..', 'public', 'admin.html');
-                        res.sendFile(adminHtmlPath);
-                    } else {
-                        // If not authenticated, show unauthorized access
-                        res.status(401).json({ error: 'Unauthorized. Please provide valid admin token.' });
-                    }
-                });
 
                 // Also serve admin.html at /admin/dashboard
                 this.app.get('/admin/dashboard', (req, res) => {
@@ -226,8 +209,32 @@ class BaseChatbotService {
                 // Continue without admin interface if initialization fails
             }
         } else {
-            // If admin interface is disabled, serve a simple welcome page
-            this.app.get('/', (req, res) => {
+            console.log('ℹ️ Admin interface is disabled (set ENABLE_ADMIN_INTERFACE=true to enable)');
+        }
+
+        // Always set up a root route regardless of admin interface setting
+        // Check admin token to decide what to serve
+        this.app.get('/', (req, res) => {
+            if (process.env.ENABLE_ADMIN_INTERFACE === 'true') {
+                // When admin interface is enabled, serve admin dashboard if properly authenticated
+                const adminToken = req.headers['x-admin-token'] || req.query.adminToken;
+                const expectedToken = process.env.ADMIN_TOKEN || 'admin123'; // Default for demo
+
+                if (adminToken === expectedToken) {
+                    // Set the admin token in response header for the frontend to use
+                    res.setHeader('X-Admin-Token-Valid', 'true');
+                    // Serve the admin dashboard from public directory
+                    const adminHtmlPath = path.join(__dirname, '..', '..', 'public', 'admin.html');
+                    res.sendFile(adminHtmlPath);
+                } else {
+                    // If not authenticated, provide instructions for authentication
+                    res.status(401).json({
+                        error: 'Unauthorized. Please provide valid admin token.',
+                        instructions: 'Provide token via X-Admin-Token header or adminToken query parameter'
+                    });
+                }
+            } else {
+                // If admin interface is disabled, serve a simple welcome page
                 res.send(`
                     <!DOCTYPE html>
                     <html>
@@ -252,9 +259,8 @@ class BaseChatbotService {
                     </body>
                     </html>
                 `);
-            });
-            console.log('ℹ️ Admin interface is disabled (set ENABLE_ADMIN_INTERFACE=true to enable)');
-        }
+            }
+        });
     }
 
     initializeAI() {

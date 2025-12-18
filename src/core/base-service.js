@@ -39,6 +39,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { createLogger, ErrorHandler } = require('../utils/enhanced-logger');
 const aiProviderManager = require('../ai/ai-provider-manager');
 const EnhancedRAGSystem = require('../ai/enhanced-rag-system');
+const ProfessionalResponseFormatter = require('../utils/professional-response-formatter');
 const ChatHistoryService = require('../core/chat-history-service');
 const ChatHistoryManager = require('../utils/chat-history-manager');
 const KnowledgeManager = require('../utils/knowledge-manager');
@@ -617,18 +618,19 @@ class BaseChatbotService {
                     } else if (validation.confidence < 0.3) {
                         // If confidence is very low, provide a more conservative response
                         // However, if there ARE relevant documents but the AI response didn't match them well,
-                        // provide a more helpful fallback that acknowledges the available information
+                        // provide the actual information from the documents instead of just saying they were found
                         if (relevantKnowledge.length > 0) {
-                            // Extract key information from the relevant documents
-                            const doc = relevantKnowledge[0]; // Use the most relevant document
-                            if (doc && doc.procedure_code && doc.procedure_title) {
-                                // Generate a more helpful response based on the specific document found
-                                text = `Tôi đã tìm thấy thông tin liên quan đến thủ tục "${doc.procedure_title}" (Mã: ${doc.procedure_code}).\n\n`;
-                                text += "Dưới đây là hướng dẫn từ cơ sở dữ liệu chính thức:\n\n";
-                                text += this.ragSystem.formatKnowledgeForPrompt([doc], userMessage);
-                                text += "\nNếu bạn cần thêm thông tin chi tiết, vui lòng liên hệ cơ quan có thẩm quyền hoặc tra cứu trên Cổng Dịch vụ công Quốc gia.";
+                            // Use the professional response formatter to create a proper response from the documents
+                            if (ProfessionalResponseFormatter.isAdministrativeProcedureQuery(userMessage)) {
+                                // Use the professional formatter for administrative procedures
+                                text = ProfessionalResponseFormatter.formatStructuredResponse(userMessage, relevantKnowledge);
                             } else {
-                                // Fallback if no specific doc info is available
+                                // Use the RAG system's format method for other types of queries
+                                text = this.ragSystem.formatKnowledgeForPrompt(relevantKnowledge, userMessage);
+                            }
+
+                            // If the formatted response is still empty or minimal, provide fallback
+                            if (!text || text.trim().length < 50) {
                                 text = `Xin lỗi, tôi chưa tìm thấy thông tin chính xác trong cơ sở dữ liệu để trả lời câu hỏi "${userMessage}". Vui lòng tra cứu trên Cổng Dịch vụ công Quốc gia hoặc liên hệ cơ quan có thẩm quyền để được hỗ trợ chính xác nhất.`;
                             }
                         } else {
